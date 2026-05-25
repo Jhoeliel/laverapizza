@@ -71,6 +71,26 @@ html,body{height:100%;background:var(--dark);font-family:'Barlow',sans-serif;col
 .b-del{background:rgba(232,93,4,.12);color:var(--or);}
 .b-pic{background:rgba(255,255,255,.06);color:var(--muted);}
 .b-fin{background:rgba(99,102,241,.15);color:#818cf8;}
+
+/* TURNO */
+.turno-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--surf2);border-bottom:1px solid var(--bd);}
+.turno-info{font-size:11px;color:var(--muted);}
+.turno-info strong{color:var(--tx);font-size:12px;}
+.btn-turno-abrir{background:var(--green);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;display:flex;align-items:center;gap:5px;}
+.btn-turno-cerrar{background:rgba(239,68,68,.15);color:var(--red);border:1px solid var(--red);border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;display:flex;align-items:center;gap:5px;}
+.turno-cerrado-msg{text-align:center;padding:32px 20px;color:var(--muted);}
+.turno-cerrado-msg i{font-size:36px;display:block;margin-bottom:10px;opacity:.3;}
+.turno-cerrado-msg p{font-size:14px;margin-bottom:14px;}
+.btn-turno-abrir-big{background:var(--green);color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;}
+
+/* COMBO SABOR */
+.combo-btn{background:transparent;border:1px dashed var(--bd2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'Barlow',sans-serif;white-space:nowrap;transition:all .15s;margin-top:3px;}
+.combo-btn:hover{border-color:var(--or);color:var(--or);}
+.combo-btn.active{border-color:var(--or);color:var(--or);background:rgba(232,93,4,.08);}
+.combo-wrap{display:flex;flex-direction:column;gap:3px;}
+.combo-second{display:none;}
+.combo-second.show{display:block;}
+.combo-price-note{font-size:10px;color:var(--or);text-align:center;margin-top:2px;}
 .badge-pago-pend{background:rgba(234,179,8,.12);color:var(--yellow);border:1px solid rgba(234,179,8,.3);}
 .badge-pago-pag{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);}
 .btn-pago{width:30px;height:30px;border-radius:7px;border:2px solid;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;flex-shrink:0;}
@@ -183,6 +203,14 @@ select option{background:var(--surf2);}
   </div>
 
   <!-- PEDIDOS ACTIVOS -->
+  <!-- BARRA DE TURNO -->
+  <div class="turno-bar" id="turno-bar">
+    <div class="turno-info" id="turno-info">Sin turno activo</div>
+    <button class="btn-turno-abrir" id="btn-turno" onclick="toggleTurno()">
+      <i class="ti ti-player-play" aria-hidden="true"></i> Abrir turno
+    </button>
+  </div>
+
   <div class="panel on" id="panel-activos">
     <div class="activos-hdr">
       <span class="activos-title" id="lista-label">Pedidos activos</span>
@@ -286,6 +314,74 @@ var catalog = [
   {name:'Gaseosa litro',price:8}
 ];
 var tipo = 'delivery', pago = 'Efectivo', estadoPago = 'Pendiente', showAll = false, detailId = null;
+var turnoActivo = null;
+var turnosHist  = [];
+var appLoading  = true;
+
+// ── TURNOS ──
+function saveTurno() {
+  // Turno persiste en Sheets — localStorage solo como cache
+  localStorage.setItem('lv_turno', JSON.stringify(turnoActivo));
+}
+
+function toggleTurno() {
+  if (!turnoActivo) {
+    var nuevoTurno = { id: Date.now(), inicio: new Date().toISOString(), pedidos: [] };
+    fetch(API_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'abrirTurno', turnoId: nuevoTurno.id, inicio: nuevoTurno.inicio})
+    }).catch(function(e){ console.warn('abrirTurno error:', e); });
+    turnoActivo = nuevoTurno;
+    orders = [];
+    saveTurno();
+    renderTurnoBar();
+    renderList();
+  } else {
+    if (!confirm('¿Cerrar el turno actual? Los pedidos activos quedarán en el historial.')) return;
+    var fin = new Date().toISOString();
+    var tOrds = orders.filter(function(o){ return turnoActivo.pedidos.indexOf(o.id) !== -1; });
+    var recaudado = tOrds.filter(function(o){ return o.estadoPago === 'Pagado'; })
+      .reduce(function(a,o){ return a+o.total; }, 0);
+    fetch(API_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'cerrarTurno', turnoId: turnoActivo.id,
+        fin: fin, totalPedidos: tOrds.length, recaudado: recaudado})
+    }).catch(function(e){ console.warn('cerrarTurno error:', e); });
+    turnoActivo = null;
+    orders = [];
+    saveTurno();
+    renderTurnoBar();
+    renderList();
+  }
+}
+
+function renderTurnoBar() {
+  var bar  = document.getElementById('turno-bar');
+  var info = document.getElementById('turno-info');
+  var btn  = document.getElementById('btn-turno');
+  if (!bar) return;
+  if (turnoActivo) {
+    var d = new Date(turnoActivo.inicio);
+    var hora = d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+    var fecha = d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'});
+    info.innerHTML = '<strong>Turno abierto</strong> desde ' + fecha + ' ' + hora;
+    btn.className = 'btn-turno-cerrar';
+    btn.innerHTML = '<i class="ti ti-player-stop" aria-hidden="true"></i> Cerrar turno';
+    bar.style.borderBottomColor = 'rgba(34,197,94,.3)';
+  } else {
+    info.innerHTML = 'Sin turno activo';
+    btn.className = 'btn-turno-abrir';
+    btn.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i> Abrir turno';
+    bar.style.borderBottomColor = '';
+  }
+}
+
+function turnoOrders() {
+  if (!turnoActivo) return [];
+  return orders.filter(function(o){ return turnoActivo.pedidos.indexOf(o.id) !== -1; });
+}
 
 function save() {
   localStorage.setItem('lv_orders', JSON.stringify(orders));
@@ -328,10 +424,13 @@ function formatTel(t) {
 }
 
 function renderStats() {
-  var activos = orders.filter(function(o) { return o.estado !== 'finalizado'; }).length;
-  var ret = orders.filter(function(o) { return o.estado === 'retrasado'; }).length;
-  var recaudado = orders.filter(function(o) { return o.estadoPago === 'Pagado'; })
-    .reduce(function(a, o) { return a + o.total; }, 0);
+  var tOrds = turnoActivo
+    ? orders.filter(function(o){ return turnoActivo.pedidos.indexOf(o.id) !== -1; })
+    : [];
+  var activos   = tOrds.filter(function(o){ return o.estado !== 'finalizado'; }).length;
+  var ret       = tOrds.filter(function(o){ return o.estado === 'retrasado'; }).length;
+  var recaudado = tOrds.filter(function(o){ return o.estadoPago === 'Pagado'; })
+    .reduce(function(a,o){ return a+o.total; }, 0);
   document.getElementById('stats-row').innerHTML =
     sc(activos, 'Activos', 'ti-flame') +
     sc(ret, 'Retrasados', 'ti-alert-triangle') +
@@ -345,11 +444,21 @@ function renderList() {
   renderStats();
   document.getElementById('detail-area').innerHTML = '';
   if (detailId) renderDetail(detailId);
-  var list = showAll ? orders : orders.filter(function(o) { return o.estado !== 'finalizado'; });
+  var turnoOrds = turnoActivo
+    ? orders.filter(function(o){ return turnoActivo.pedidos.indexOf(o.id) !== -1; })
+    : [];
+  var list = showAll
+    ? turnoOrds
+    : turnoOrds.filter(function(o){ return o.estado !== 'finalizado'; });
   var el = document.getElementById('order-list');
+  if (!turnoActivo) {
+    el.innerHTML = '<div class="turno-cerrado-msg"><i class="ti ti-moon" aria-hidden="true"></i><p>No hay turno activo</p>' +
+      '<button class="btn-turno-abrir-big" onclick="toggleTurno()"><i class="ti ti-player-play" aria-hidden="true"></i> Abrir turno</button></div>';
+    return;
+  }
   if (!list.length) {
     el.innerHTML = '<div class="empty-state"><i class="ti ti-pizza" aria-hidden="true"></i><p>' +
-      (showAll ? 'No hay pedidos esta noche aun' : 'No hay pedidos activos') + '</p></div>';
+      (showAll ? 'No hay pedidos en este turno' : 'No hay pedidos activos') + '</p></div>';
     return;
   }
   el.innerHTML = list.map(function(o) {
@@ -478,21 +587,79 @@ function setEstadoPago(ep) {
 function buildOpts(sel) { return sel; } // legacy compat
 
 function addRow(name, qty, price) {
-  var uid = 'ac' + Date.now() + Math.floor(Math.random()*1000);
+  var uid  = 'ac'  + Date.now() + Math.floor(Math.random()*1000);
+  var uid2 = 'ac2' + Date.now() + Math.floor(Math.random()*1001);
   var d = document.createElement('div');
   d.className = 'prod-row';
   d.setAttribute('data-product', name || '');
   d.innerHTML =
-    '<div class="ac-wrap">' +
-      '<input class="ac-input" id="' + uid + '" type="text" placeholder="Buscar producto..." autocomplete="off"' +
-        (name ? ' value="' + name + '"' : '') + ' oninput="acFilter(this)" onkeydown="acKey(event,this)" onfocus="acFilter(this)" onblur="acBlur(this)"/>' +
-      '<div class="ac-dropdown" id="drop-' + uid + '"></div>' +
+    '<div class="combo-wrap">' +
+      '<div class="ac-wrap">' +
+        '<input class="ac-input" id="' + uid + '" type="text" placeholder="Buscar producto..." autocomplete="off"' +
+          (name ? ' value="' + name + '"' : '') + ' oninput="acFilter(this)" onkeydown="acKey(event,this)" onfocus="acFilter(this)" onblur="acBlur(this)"/>' +
+        '<div class="ac-dropdown" id="drop-' + uid + '"></div>' +
+      '</div>' +
+      '<button class="combo-btn" onclick="toggleCombo(this)" title="Agregar segundo sabor">'+
+        '<i class="ti ti-plus" aria-hidden="true"></i> 2do sabor' +
+      '</button>' +
+      '<div class="combo-second" id="combo-' + uid + '">' +
+        '<div class="ac-wrap">' +
+          '<input class="ac-input ac-input2" id="' + uid2 + '" type="text" placeholder="Segundo sabor..." autocomplete="off"' +
+            ' oninput="acFilter(this);calcComboPrice(this)" onkeydown="acKey(event,this)" onfocus="acFilter(this)" onblur="acBlurCombo(this)"/>' +
+          '<div class="ac-dropdown" id="drop-' + uid2 + '"></div>' +
+        '</div>' +
+        '<div class="combo-price-note" id="note-' + uid + '"></div>' +
+      '</div>' +
     '</div>' +
     '<input type="number" min="1" value="' + (qty || 1) + '" oninput="calcTots()" style="text-align:center;">' +
     '<input type="number" min="0" step="0.5" value="' + (price !== undefined ? price : 0) + '" oninput="calcTots()" style="text-align:center;">' +
     '<button class="btn-rm" onclick="this.parentElement.remove();calcTots()"><i class="ti ti-trash" aria-hidden="true"></i></button>';
   document.getElementById('prod-container').appendChild(d);
   if (name) calcTots();
+}
+
+function toggleCombo(btn) {
+  var wrap = btn.closest('.combo-wrap');
+  var second = wrap.querySelector('.combo-second');
+  var isOpen = second.classList.contains('show');
+  second.classList.toggle('show', !isOpen);
+  btn.classList.toggle('active', !isOpen);
+  if (isOpen) {
+    // Limpiar segundo sabor y recalcular
+    var inp2 = wrap.querySelector('.ac-input2');
+    if (inp2) inp2.value = '';
+    var note = wrap.querySelector('.combo-price-note');
+    if (note) note.textContent = '';
+    // Restaurar precio desde primer sabor
+    var inp1 = wrap.querySelector('.ac-input');
+    var match = catalog.find(function(c){ return c.name === inp1.value; });
+    var row = btn.closest('.prod-row');
+    if (match) row.querySelectorAll('input[type=number]')[1].value = match.price.toFixed(2);
+    calcTots();
+  }
+}
+
+function calcComboPrice(inp2) {
+  var wrap = inp2.closest('.combo-wrap');
+  var inp1 = wrap.querySelector('.ac-input:not(.ac-input2)');
+  var row  = inp2.closest('.prod-row');
+  var note = wrap.querySelector('.combo-price-note');
+  var m1 = catalog.find(function(c){ return c.name === inp1.value; });
+  var m2 = catalog.find(function(c){ return c.name === inp2.value; });
+  if (m1 && m2) {
+    var combo = Math.ceil((m1.price + m2.price) / 2);
+    row.querySelectorAll('input[type=number]')[1].value = combo.toFixed(2);
+    note.textContent = 'Precio combinado: S/ ' + combo.toFixed(2);
+    calcTots();
+  }
+}
+
+function acBlurCombo(inp) {
+  setTimeout(function() {
+    var drop = document.getElementById('drop-' + inp.id);
+    if (drop) drop.style.display = 'none';
+    calcComboPrice(inp);
+  }, 150);
 }
 
 function acFilter(inp) {
@@ -511,15 +678,28 @@ function acFilter(inp) {
 }
 
 function acSelect(item) {
-  var row = item.closest('.prod-row');
-  var inp = row.querySelector('.ac-input');
-  var drop = row.querySelector('.ac-dropdown');
-  var name = item.getAttribute('data-name');
+  var wrap = item.closest('.ac-wrap');
+  var inp  = wrap.querySelector('.ac-input');
+  var drop = wrap.querySelector('.ac-dropdown');
+  var name  = item.getAttribute('data-name');
   var price = parseFloat(item.getAttribute('data-price'));
   inp.value = name;
-  row.setAttribute('data-product', name);
-  row.querySelectorAll('input[type=number]')[1].value = price.toFixed(2);
   drop.style.display = 'none';
+  var row = item.closest('.prod-row');
+  row.setAttribute('data-product', name);
+  // Si es segundo sabor, calcular precio combo
+  if (inp.classList.contains('ac-input2')) {
+    calcComboPrice(inp);
+  } else {
+    // Solo actualizar precio si no hay segundo sabor activo
+    var second = row.querySelector('.combo-second');
+    var inp2val = second && second.classList.contains('show') ? row.querySelector('.ac-input2').value : '';
+    if (!inp2val) {
+      row.querySelectorAll('input[type=number]')[1].value = price.toFixed(2);
+    } else {
+      calcComboPrice(row.querySelector('.ac-input2'));
+    }
+  }
   calcTots();
 }
 
@@ -575,7 +755,7 @@ function calcTots() {
   document.getElementById('t-del-val').textContent = 'S/ ' + del.toFixed(2);
   document.getElementById('t-total').textContent = 'S/ ' + (sub + del).toFixed(2);
 }
-var API_URL = "https://script.google.com/macros/s/AKfycbwwVHMvTeiOBvR0-Zcs9_fopflwtKzYLYarqtl6prtts6832UJlQVtwfxvnCU3xxKhwlw/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbzCGxmowyPUVsBtXtAwlPFMnu3FsgNvKQfBsjvuqDBP3uqSX_Qe1FRD0D6fOJHDzKD25A/exec";
 
 function saveToSheet(ord) {
   fetch(API_URL, {
@@ -605,12 +785,17 @@ function updateSheetEstadoPago(id, estadoPago) {
 }
 
 function regOrder() {
+  if (!turnoActivo) { alert('Debes abrir un turno antes de registrar pedidos.'); return; }
   var tel = document.getElementById('inp-tel').value.trim();
   if (!tel) { alert('Ingresa el telefono del cliente.'); return; }
   var rows = document.querySelectorAll('.prod-row'), prods = [], ok = true;
   rows.forEach(function(r) {
-    var acInp = r.querySelector('.ac-input');
+    var acInp  = r.querySelector('.ac-input:not(.ac-input2)');
+    var acInp2 = r.querySelector('.ac-input2');
+    var second = r.querySelector('.combo-second');
+    var hasCombo = second && second.classList.contains('show') && acInp2 && acInp2.value.trim();
     var n = acInp ? acInp.value.trim() : '';
+    if (hasCombo) n = n + ' + ' + acInp2.value.trim();
     var numInputs = r.querySelectorAll('input[type=number]');
     var q = parseFloat(numInputs[0] ? numInputs[0].value : 0) || 0;
     var p = parseFloat(numInputs[1] ? numInputs[1].value : 0) || 0;
@@ -626,7 +811,9 @@ function regOrder() {
     total: parseFloat((sub + del).toFixed(2)), estado: 'preparando',
     notas: document.getElementById('inp-notas').value.trim()
   };
-  orders.unshift(ord); save(); saveToSheet(ord); resetForm();
+  orders.unshift(ord);
+  if (turnoActivo) turnoActivo.pedidos.push(ord.id);
+  save(); saveTurno(); saveToSheet(ord); resetForm();
   showToast('Pedido #' + pad(ord.id) + ' registrado');
   goTab('activos', document.querySelector('.tab'));
 }
@@ -766,7 +953,61 @@ function playAlarm() {
 }
 
 
-addRow(); calcTots(); renderList(); startTimers(); loadSheet();
+addRow(); calcTots(); startTimers(); loadSheet();
+
+// Cargar turno activo y pedidos desde Sheets
+function cargarDesdeSheets() {
+  fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'getTurnoActivo'})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok && data.turno) {
+      turnoActivo = {
+        id: data.turno.id,
+        inicio: data.turno.inicio,
+        pedidos: data.pedidos.map(function(p){ return p.id; })
+      };
+      // Reconstruir orders desde Sheets
+      orders = data.pedidos.map(function(p) {
+        return {
+          id: p.id, fecha: p.inicio || new Date().toISOString(),
+          tipo: p.tipo, tel: p.tel, pago: p.pago,
+          products: p.products, subtotal: p.subtotal,
+          delivery: p.delivery, total: p.total,
+          estado: p.estado, estadoPago: p.estadoPago,
+          turnoId: p.turnoId, notas: p.notas || ''
+        };
+      });
+      // Sincronizar contador de IDs
+      if (orders.length > 0) {
+        var maxId = orders.reduce(function(m,o){ return Math.max(m, o.id); }, 0);
+        if (maxId >= counter) counter = maxId + 1;
+        save();
+      }
+    } else {
+      turnoActivo = null;
+      orders = [];
+    }
+    appLoading = false;
+    saveTurno();
+    renderTurnoBar();
+    renderList();
+  })
+  .catch(function(err) {
+    console.warn('cargarDesdeSheets error:', err);
+    // Fallback a localStorage si no hay red
+    turnoActivo = JSON.parse(localStorage.getItem('lv_turno') || 'null');
+    orders = JSON.parse(localStorage.getItem('lv_orders') || '[]');
+    appLoading = false;
+    renderTurnoBar();
+    renderList();
+  });
+}
+
+cargarDesdeSheets();
 </script>
 <!-- Service Worker para PWA offline -->
 <script>
