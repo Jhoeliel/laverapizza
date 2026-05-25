@@ -809,6 +809,8 @@ function regOrder() {
     id: counter++, fecha: new Date().toISOString(), tipo: tipo, tel: tel, pago: pago,
     products: prods, subtotal: sub, delivery: parseFloat(del.toFixed(2)),
     total: parseFloat((sub + del).toFixed(2)), estado: 'preparando',
+    estadoPago: estadoPago,
+    turnoId: turnoActivo ? turnoActivo.id : '',
     notas: document.getElementById('inp-notas').value.trim()
   };
   orders.unshift(ord);
