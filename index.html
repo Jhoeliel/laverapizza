@@ -755,7 +755,7 @@ function calcTots() {
   document.getElementById('t-del-val').textContent = 'S/ ' + del.toFixed(2);
   document.getElementById('t-total').textContent = 'S/ ' + (sub + del).toFixed(2);
 }
-var API_URL = "https://script.google.com/macros/s/AKfycbwqSaFu48DG2Y39Rh0Pn0YTNYgYuOFb6qTW7Ww7dNRZ-1O97-KleG7ynbUraaacrsclMA/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbx3RZGgAQI7cgMsDmXoi6fAkx9-cGckLX7r1EKR8X93JKKgaRyXkQKRSmRTe8JGi5fI/exec";
 
 function saveToSheet(ord) {
   fetch(API_URL, {
@@ -973,7 +973,7 @@ function cargarDesdeSheets() {
       // Reconstruir orders desde Sheets
       orders = data.pedidos.map(function(p) {
         return {
-          id: p.id, fecha: p.inicio || new Date().toISOString(),
+          id: p.id, fecha: p.fecha || new Date().toISOString(),
           tipo: p.tipo, tel: p.tel, pago: p.pago,
           products: p.products, subtotal: p.subtotal,
           delivery: p.delivery, total: p.total,
