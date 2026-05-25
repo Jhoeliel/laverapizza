@@ -93,7 +93,7 @@ html,body{height:100%;background:var(--dark);font-family:'Barlow',sans-serif;col
 .combo-price-note{font-size:10px;color:var(--or);text-align:center;margin-top:2px;}
 .badge-pago-pend{background:rgba(234,179,8,.12);color:var(--yellow);border:1px solid rgba(234,179,8,.3);}
 .badge-pago-pag{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);}
-.btn-pago{width:30px;height:30px;border-radius:7px;border:2px solid;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;flex-shrink:0;}
+.btn-pago{width:px;height:px;border-radius:7px;border:2px solid;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;flex-shrink:0;}
 .btn-pago.pend{background:rgba(239,68,68,.12);border-color:var(--red);color:var(--red);}
 .btn-pago.pag{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green);}
 .pago-toggle-row{display:flex;gap:6px;margin-top:4px;}
@@ -143,10 +143,10 @@ select option{background:var(--surf2);}
 .sec-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
 .btn-add{background:var(--or);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:'Barlow',sans-serif;}
 .btn-add:hover{background:var(--or2);}
-.prod-row{display:grid;grid-template-columns:1fr 52px 82px 30px;gap:7px;align-items:center;margin-bottom:7px;}
+.prod-row{display:grid;grid-template-columns:1fr 52px 82px px;gap:7px;align-items:center;margin-bottom:7px;}
 .prod-row select,.prod-row input{font-size:12px;}
 .prod-row input{text-align:center;}
-.btn-rm{background:none;border:1px solid var(--bd2);border-radius:6px;width:30px;height:34px;cursor:pointer;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.btn-rm{background:none;border:1px solid var(--bd2);border-radius:6px;width:px;height:34px;cursor:pointer;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .btn-rm:hover{border-color:var(--red);color:var(--red);}
 .totals{background:var(--surf2);border-radius:10px;padding:12px 14px;margin-top:12px;border:1px solid var(--bd);}
 .tot-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
@@ -890,10 +890,41 @@ function csvSplit(line) {
 var timerInterval = null;
 var alertedOrders = {};
 
+var syncInterval = null;
+
 function startTimers() {
   if (timerInterval) clearInterval(timerInterval);
   tickTimers();
   timerInterval = setInterval(tickTimers, 10000);
+  // Sincronizar estados desde Sheets cada 10 segundos
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(sincronizarEstados, 10000);
+}
+
+function sincronizarEstados() {
+  if (!turnoActivo) return;
+  fetch(API_URL + '?action=getTurnoActivo')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.ok || !data.turno) return;
+      if (String(data.turno.id) !== String(turnoActivo.id)) return;
+      var actualizado = false;
+      data.pedidos.forEach(function(p) {
+        var local = orders.find(function(o) { return o.id === p.id; });
+        if (!local) return;
+        // Sincronizar estado y estado de pago si cambiaron
+        if (local.estado !== p.estado || local.estadoPago !== p.estadoPago) {
+          local.estado     = p.estado;
+          local.estadoPago = p.estadoPago;
+          actualizado = true;
+        }
+      });
+      if (actualizado) {
+        save();
+        renderList();
+      }
+    })
+    .catch(function(err) { console.warn('sincronizarEstados error:', err); });
 }
 
 function tickTimers() {
