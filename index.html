@@ -962,7 +962,7 @@ function startTimers() {
   timerInterval = setInterval(tickTimers, 10000);
   // Sincronizar estados desde Sheets cada 30 segundos
   if (syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(sincronizarEstados, 30000);
+  syncInterval = setInterval(sincronizarEstados, 10000);
 }
 
 function sincronizarEstados() {
