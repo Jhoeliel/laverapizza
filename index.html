@@ -819,7 +819,7 @@ function calcTots() {
   document.getElementById('t-del-val').textContent = 'S/ ' + del.toFixed(2);
   document.getElementById('t-total').textContent = 'S/ ' + (sub + del).toFixed(2);
 }
-var API_URL = "https://script.google.com/macros/s/AKfycbzTcDDQusuPd2fgtqPkdC1CnkEO1Yhtd89xHM5eiarzzjYjnUQ-_KG5Vq9A-m3iL2XbRw/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbyMBBinGenl834oUchhLEsDLUS2bDM3tiZKBu-2vOoexbNEv29Jjq_AF659gtk6X-pnqQ/exec";
 
 function saveToSheet(ord) {
   fetch(API_URL, {
@@ -967,47 +967,81 @@ function startTimers() {
 
 function sincronizarEstados() {
   if (!turnoActivo) return;
-  fetch(API_URL + '?action=getTurnoActivo')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (!data || !data.ok || !data.turno) return;
-      if (String(data.turno.id) !== String(turnoActivo.id)) return;
-      var actualizado = false;
 
-      // Actualizar pedidos existentes
-      data.pedidos.forEach(function(p) {
-        var local = orders.find(function(o) { return o.id === p.id; });
-        if (local) {
-          if (local.estado     !== p.estado     ||
-              local.estadoPago !== p.estadoPago  ||
-              local.delivery   !== p.delivery    ||
-              local.total      !== p.total       ||
-              local.pago       !== p.pago) {
-            local.estado     = p.estado;
-            local.estadoPago = p.estadoPago;
-            local.delivery   = p.delivery;
-            local.total      = p.total;
-            local.pago       = p.pago;
-            actualizado = true;
-          }
-        } else {
-          // Pedido nuevo desde otro dispositivo
-          orders.unshift({
-            id: p.id, fecha: p.fecha || new Date().toISOString(),
-            tipo: p.tipo, tel: p.tel, pago: p.pago,
-            products: p.products, subtotal: p.subtotal,
-            delivery: p.delivery, total: p.total,
-            estado: p.estado, estadoPago: p.estadoPago,
-            turnoId: p.turnoId, notas: p.notas || ''
-          });
-          turnoActivo.pedidos.push(p.id);
+  // JSONP para evitar CORS desde GitHub Pages
+  var cbName = 'lv_sync_' + Date.now();
+  var done = false;
+
+  var timer = setTimeout(function() {
+    if (done) return;
+    done = true;
+    delete window[cbName];
+    var el = document.getElementById(cbName);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }, 9000);
+
+  window[cbName] = function(data) {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    delete window[cbName];
+    var el = document.getElementById(cbName);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+
+    if (!data || !data.ok || !data.turno) return;
+    if (String(data.turno.id) !== String(turnoActivo.id)) return;
+
+    var actualizado = false;
+    data.pedidos.forEach(function(p) {
+      var local = orders.find(function(o) { return o.id === p.id; });
+      if (local) {
+        if (local.estado     !== p.estado    ||
+            local.estadoPago !== p.estadoPago ||
+            local.delivery   !== p.delivery   ||
+            local.total      !== p.total      ||
+            local.pago       !== p.pago) {
+          local.estado     = p.estado;
+          local.estadoPago = p.estadoPago;
+          local.delivery   = p.delivery;
+          local.total      = p.total;
+          local.pago       = p.pago;
           actualizado = true;
         }
-      });
+      } else {
+        // Pedido nuevo desde otro dispositivo
+        orders.unshift({
+          id:         p.id,
+          fecha:      p.fecha || new Date().toISOString(),
+          tipo:       p.tipo,
+          tel:        p.tel,
+          pago:       p.pago,
+          products:   p.products,
+          subtotal:   p.subtotal,
+          delivery:   p.delivery,
+          total:      p.total,
+          estado:     p.estado,
+          estadoPago: p.estadoPago,
+          turnoId:    p.turnoId,
+          notas:      p.notas || ''
+        });
+        turnoActivo.pedidos.push(p.id);
+        actualizado = true;
+      }
+    });
 
-      if (actualizado) { save(); saveTurno(); renderList(); }
-    })
-    .catch(function(err) { console.warn('sincronizarEstados error:', err); });
+    if (actualizado) { save(); saveTurno(); renderList(); }
+  };
+
+  var s = document.createElement('script');
+  s.id  = cbName;
+  s.src = API_URL + '?action=getTurnoActivo&callback=' + cbName;
+  s.onerror = function() {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    delete window[cbName];
+  };
+  document.head.appendChild(s);
 }
 
 function tickTimers() {
