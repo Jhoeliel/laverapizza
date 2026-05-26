@@ -80,6 +80,7 @@ html,body{height:100%;background:var(--dark);font-family:'Barlow',sans-serif;col
 .btn-turno-cerrar{background:rgba(239,68,68,.15);color:var(--red);border:1px solid var(--red);border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;display:flex;align-items:center;gap:5px;}
 .turno-cerrado-msg{text-align:center;padding:32px 20px;color:var(--muted);}
 .turno-cerrado-msg i{font-size:36px;display:block;margin-bottom:10px;opacity:.3;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 .turno-cerrado-msg p{font-size:14px;margin-bottom:14px;}
 .btn-turno-abrir-big{background:var(--green);color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;}
 
@@ -1044,52 +1045,73 @@ addRow(); calcTots(); startTimers(); loadSheet();
 
 // Cargar turno activo y pedidos desde Sheets
 function cargarDesdeSheets() {
-  fetch(API_URL + '?action=getTurnoActivo', {
-    method: 'GET'
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    if (data.ok && data.turno) {
-      turnoActivo = {
-        id: data.turno.id,
-        inicio: data.turno.inicio,
-        pedidos: data.pedidos.map(function(p){ return p.id; })
-      };
-      // Reconstruir orders desde Sheets
-      orders = data.pedidos.map(function(p) {
-        return {
-          id: p.id, fecha: p.fecha || new Date().toISOString(),
-          tipo: p.tipo, tel: p.tel, pago: p.pago,
-          products: p.products, subtotal: p.subtotal,
-          delivery: p.delivery, total: p.total,
-          estado: p.estado, estadoPago: p.estadoPago,
-          turnoId: p.turnoId, notas: p.notas || ''
+  // Mostrar spinner mientras carga
+  var el = document.getElementById('order-list');
+  if (el) el.innerHTML = '<div class="empty-state"><i class="ti ti-loader" style="animation:spin 1s linear infinite" aria-hidden="true"></i><p>Sincronizando...</p></div>';
+
+  // Timeout de 8 segundos — si no responde, usar localStorage
+  var timeout = setTimeout(function() {
+    console.warn('cargarDesdeSheets: timeout, usando localStorage');
+    usarFallback();
+  }, 8000);
+
+  fetch(API_URL + '?action=getTurnoActivo')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      clearTimeout(timeout);
+      if (data.ok && data.turno) {
+        turnoActivo = {
+          id:      data.turno.id,
+          inicio:  data.turno.inicio,
+          pedidos: data.pedidos.map(function(p){ return p.id; })
         };
-      });
-      // Sincronizar contador de IDs
-      if (orders.length > 0) {
-        var maxId = orders.reduce(function(m,o){ return Math.max(m, o.id); }, 0);
-        if (maxId >= counter) counter = maxId + 1;
-        save();
+        orders = data.pedidos.map(function(p) {
+          return {
+            id:         p.id,
+            fecha:      p.fecha || new Date().toISOString(),
+            tipo:       p.tipo,
+            tel:        p.tel,
+            pago:       p.pago,
+            products:   p.products,
+            subtotal:   p.subtotal,
+            delivery:   p.delivery,
+            total:      p.total,
+            estado:     p.estado,
+            estadoPago: p.estadoPago,
+            turnoId:    p.turnoId,
+            notas:      p.notas || ''
+          };
+        });
+        if (orders.length > 0) {
+          var maxId = orders.reduce(function(m,o){ return Math.max(m, o.id); }, 0);
+          if (maxId >= counter) { counter = maxId + 1; }
+          save();
+        }
+      } else {
+        turnoActivo = null;
+        orders = [];
       }
-    } else {
-      turnoActivo = null;
-      orders = [];
-    }
-    appLoading = false;
-    saveTurno();
-    renderTurnoBar();
-    renderList();
-  })
-  .catch(function(err) {
-    console.warn('cargarDesdeSheets error:', err);
-    // Fallback a localStorage si no hay red
-    turnoActivo = JSON.parse(localStorage.getItem('lv_turno') || 'null');
-    orders = JSON.parse(localStorage.getItem('lv_orders') || '[]');
-    appLoading = false;
-    renderTurnoBar();
-    renderList();
-  });
+      appLoading = false;
+      saveTurno();
+      renderTurnoBar();
+      renderList();
+    })
+    .catch(function(err) {
+      clearTimeout(timeout);
+      console.warn('cargarDesdeSheets error:', err);
+      usarFallback();
+    });
+}
+
+function usarFallback() {
+  turnoActivo = JSON.parse(localStorage.getItem('lv_turno') || 'null');
+  orders      = JSON.parse(localStorage.getItem('lv_orders') || '[]');
+  appLoading  = false;
+  renderTurnoBar();
+  renderList();
 }
 
 cargarDesdeSheets();
