@@ -988,8 +988,34 @@ function sincronizarEstados() {
     var el = document.getElementById(cbName);
     if (el && el.parentNode) el.parentNode.removeChild(el);
 
-    if (!data || !data.ok || !data.turno) return;
-    if (String(data.turno.id) !== String(turnoActivo.id)) return;
+    if (!data || !data.ok) return;
+
+    // Si no hay turno activo localmente pero Sheets tiene uno, adoptarlo
+    if (data.turno && (!turnoActivo || String(data.turno.id) !== String(turnoActivo.id))) {
+      turnoActivo = {
+        id:      data.turno.id,
+        inicio:  data.turno.inicio,
+        pedidos: data.pedidos.map(function(p){ return p.id; })
+      };
+      orders = data.pedidos.map(function(p) {
+        return {
+          id: p.id, fecha: p.fecha || new Date().toISOString(),
+          tipo: p.tipo, tel: p.tel, pago: p.pago,
+          products: p.products, subtotal: p.subtotal,
+          delivery: p.delivery, total: p.total,
+          estado: p.estado, estadoPago: p.estadoPago,
+          turnoId: p.turnoId, notas: p.notas || ''
+        };
+      });
+      if (orders.length > 0) {
+        var maxId = orders.reduce(function(m,o){ return Math.max(m,o.id); }, 0);
+        if (maxId >= counter) { counter = maxId + 1; }
+      }
+      save(); saveTurno(); renderTurnoBar(); renderList();
+      return;
+    }
+
+    if (!data.turno) return;
 
     var actualizado = false;
     data.pedidos.forEach(function(p) {
