@@ -93,7 +93,7 @@ html,body{height:100%;background:var(--dark);font-family:'Barlow',sans-serif;col
 .combo-price-note{font-size:10px;color:var(--or);text-align:center;margin-top:2px;}
 .badge-pago-pend{background:rgba(234,179,8,.12);color:var(--yellow);border:1px solid rgba(234,179,8,.3);}
 .badge-pago-pag{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);}
-.btn-pago{width:px;height:px;border-radius:7px;border:2px solid;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;flex-shrink:0;}
+.btn-pago{width:30px;height:30px;border-radius:7px;border:2px solid;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;flex-shrink:0;}
 .btn-pago.pend{background:rgba(239,68,68,.12);border-color:var(--red);color:var(--red);}
 .btn-pago.pag{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green);}
 .pago-toggle-row{display:flex;gap:6px;margin-top:4px;}
@@ -107,6 +107,12 @@ html,body{height:100%;background:var(--dark);font-family:'Barlow',sans-serif;col
 .oc-right{display:flex;align-items:center;gap:8px;}
 .oc-time{font-size:10px;color:var(--muted);}
 .stt-sel{background:var(--surf2);border:1px solid var(--bd2);border-radius:6px;padding:4px 7px;font-size:11px;color:var(--tx);font-family:'Barlow',sans-serif;cursor:pointer;font-weight:700;}
+.card-edit-row{display:flex;align-items:center;gap:6px;padding:6px 14px;border-top:1px solid var(--bd);background:rgba(255,255,255,.02);}
+.card-edit-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);white-space:nowrap;}
+.card-edit-input{background:var(--surf2);border:1px solid var(--bd2);border-radius:6px;padding:4px 8px;font-size:13px;color:var(--tx);font-family:'JetBrains Mono','Courier New',monospace;width:80px;outline:none;}
+.card-edit-input:focus{border-color:var(--or);}
+.card-pago-btn{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;border:1px solid var(--bd2);background:transparent;color:var(--muted);transition:all .15s;}
+.card-pago-btn.on{background:rgba(34,197,94,.12);border-color:var(--green);color:var(--green);}
 .btn-detail{background:rgba(34,197,94,.12);border:1px solid var(--green);border-radius:6px;padding:4px 8px;color:var(--green);font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .15s;}
 .btn-detail:hover{background:rgba(34,197,94,.25);color:var(--green);}
 
@@ -143,10 +149,13 @@ select option{background:var(--surf2);}
 .sec-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
 .btn-add{background:var(--or);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:'Barlow',sans-serif;}
 .btn-add:hover{background:var(--or2);}
-.prod-row{display:grid;grid-template-columns:1fr 52px 82px px;gap:7px;align-items:center;margin-bottom:7px;}
+.prod-hdr-row{display:grid;grid-template-columns:1fr 52px 82px 30px;gap:7px;margin-bottom:3px;}
+.prod-hdr-row span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);text-align:center;}
+.prod-hdr-row span:first-child{text-align:left;}
+.prod-row{display:grid;grid-template-columns:1fr 52px 82px 30px;gap:7px;align-items:center;margin-bottom:7px;}
 .prod-row select,.prod-row input{font-size:12px;}
 .prod-row input{text-align:center;}
-.btn-rm{background:none;border:1px solid var(--bd2);border-radius:6px;width:px;height:34px;cursor:pointer;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.btn-rm{background:none;border:1px solid var(--bd2);border-radius:6px;width:30px;height:34px;cursor:pointer;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .btn-rm:hover{border-color:var(--red);color:var(--red);}
 .totals{background:var(--surf2);border-radius:10px;padding:12px 14px;margin-top:12px;border:1px solid var(--bd);}
 .tot-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
@@ -255,7 +264,6 @@ select option{background:var(--surf2);}
           <div class="toggle-row">
             <button class="tgl tgl-pago on" id="p-ef" onclick="setPago('Efectivo')"><i class="ti ti-cash" aria-hidden="true"></i> Efectivo</button>
             <button class="tgl tgl-pago" id="p-yp" onclick="setPago('Yape/Plin')"><i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin</button>
-            <button class="tgl tgl-pago" id="p-tr" onclick="setPago('Transferencia')"><i class="ti ti-building-bank" aria-hidden="true"></i> Transf.</button>
           </div>
         </div>
         <div class="fg" style="margin:0;">
@@ -272,6 +280,12 @@ select option{background:var(--surf2);}
       <div class="prod-hdr">
         <span class="sec-label">Productos</span>
         <button class="btn-add" onclick="addRow()"><i class="ti ti-plus" aria-hidden="true"></i> Agregar</button>
+      </div>
+      <div class="prod-hdr-row">
+        <span>Producto</span>
+        <span>Cant.</span>
+        <span>Precio</span>
+        <span></span>
       </div>
       <div id="prod-container"></div>
 
@@ -484,6 +498,17 @@ function renderList() {
       '<span class="oc-tel"><i class="ti ti-phone" style="font-size:14px;color:var(--or)" aria-hidden="true"></i> ' + formatTel(o.tel) + '</span>' +
       '</div>' +
       '<div class="oc-items">' + items + '</div>' +
+      '<div class="card-edit-row">' +
+        '<span class="card-edit-label">Delivery</span>' +
+        '<input class="card-edit-input" type="number" min="0" step="0.5" value="' + o.delivery.toFixed(2) + '" ' +
+          'onchange="updateDelivery(' + o.id + ',this.value)" onclick="event.stopPropagation()" ' +
+          'style="width:70px;" />' +
+        '<span class="card-edit-label" style="margin-left:8px;">Pago</span>' +
+        '<button class="card-pago-btn' + (o.pago === 'Efectivo' ? ' on' : '') + '" ' +
+          'onclick="setCardPago(' + o.id + ','Efectivo',this,event)"><i class="ti ti-cash" aria-hidden="true"></i> Efectivo</button>' +
+        '<button class="card-pago-btn' + (o.pago === 'Yape/Plin' ? ' on' : '') + '" ' +
+          'onclick="setCardPago(' + o.id + ','Yape/Plin',this,event)"><i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin</button>' +
+      '</div>' +
       '<div class="oc-bot"><span class="oc-total">S/ ' + o.total.toFixed(2) + '</span>' +
       '<div class="oc-right">' +
       '<span class="oc-time">' + hora + '</span>' +
@@ -501,6 +526,36 @@ function renderList() {
       '<button class="btn-detail" onclick="toggleDetail(' + o.id + ',event)"><i class="ti ti-info-circle" style="font-size:13px" aria-hidden="true"></i></button>' +
       '</div></div></div>';
   }).join('');
+}
+
+function updateDelivery(id, val) {
+  var o = orders.find(function(x) { return x.id === id; });
+  if (!o) return;
+  var newDel = parseFloat(val) || 0;
+  o.delivery = newDel;
+  o.total = parseFloat((o.subtotal + newDel).toFixed(2));
+  save();
+  // Actualizar en Sheets
+  fetch(API_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'updateDelivery', id: id, delivery: newDel, total: o.total})
+  }).catch(function(e){ console.warn('updateDelivery error:', e); });
+  renderList();
+}
+
+function setCardPago(id, nuevoPago, btn, e) {
+  e.stopPropagation();
+  var o = orders.find(function(x) { return x.id === id; });
+  if (!o) return;
+  o.pago = nuevoPago;
+  save();
+  fetch(API_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'updatePago', id: id, pago: nuevoPago})
+  }).catch(function(e){ console.warn('setCardPago error:', e); });
+  renderList();
 }
 
 function togglePago(id, e) {
@@ -572,7 +627,6 @@ function setPago(p) {
   pago = p;
   document.getElementById('p-ef').classList.toggle('on', p === 'Efectivo');
   document.getElementById('p-yp').classList.toggle('on', p === 'Yape/Plin');
-  document.getElementById('p-tr').classList.toggle('on', p === 'Transferencia');
 }
 
 function setEstadoPago(ep) {
@@ -755,7 +809,7 @@ function calcTots() {
   document.getElementById('t-del-val').textContent = 'S/ ' + del.toFixed(2);
   document.getElementById('t-total').textContent = 'S/ ' + (sub + del).toFixed(2);
 }
-var API_URL = "https://script.google.com/macros/s/AKfycbx3RZGgAQI7cgMsDmXoi6fAkx9-cGckLX7r1EKR8X93JKKgaRyXkQKRSmRTe8JGi5fI/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbyj-tCqMvQoOQRkc_kRmDwOMGCGWiOhupR-jW31wzbtU8zb_NzIqyR3VJ6fplmPwXu8-g/exec";
 
 function saveToSheet(ord) {
   fetch(API_URL, {
@@ -896,9 +950,9 @@ function startTimers() {
   if (timerInterval) clearInterval(timerInterval);
   tickTimers();
   timerInterval = setInterval(tickTimers, 10000);
-  // Sincronizar estados desde Sheets cada 10 segundos
+  // Sincronizar estados desde Sheets cada 30 segundos
   if (syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(sincronizarEstados, 10000);
+  syncInterval = setInterval(sincronizarEstados, 30000);
 }
 
 function sincronizarEstados() {
