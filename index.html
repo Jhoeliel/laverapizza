@@ -455,6 +455,43 @@ function sc(v, l, ic) {
   return '<div class="sc"><div class="sc-v">' + v + '</div><div class="sc-l"><i class="ti ' + ic + '" aria-hidden="true"></i> ' + l + '</div></div>';
 }
 
+function buildEditRow(o) {
+  var div = document.createElement('div');
+  div.className = 'card-edit-row';
+
+  var lblDel = document.createElement('span');
+  lblDel.className = 'card-edit-label';
+  lblDel.textContent = 'Delivery';
+  div.appendChild(lblDel);
+
+  var inp = document.createElement('input');
+  inp.className = 'card-edit-input';
+  inp.type = 'number'; inp.min = '0'; inp.step = '0.5';
+  inp.value = o.delivery.toFixed(2);
+  inp.style.width = '70px';
+  inp.addEventListener('click', function(e){ e.stopPropagation(); });
+  inp.addEventListener('change', function(e){ e.stopPropagation(); updateDelivery(o.id, this.value); });
+  div.appendChild(inp);
+
+  var lblPago = document.createElement('span');
+  lblPago.className = 'card-edit-label';
+  lblPago.style.marginLeft = '8px';
+  lblPago.textContent = 'Pago';
+  div.appendChild(lblPago);
+
+  ['Efectivo','Yape/Plin'].forEach(function(tipo) {
+    var btn = document.createElement('button');
+    btn.className = 'card-pago-btn' + (o.pago === tipo ? ' on' : '');
+    btn.innerHTML = tipo === 'Efectivo'
+      ? '<i class="ti ti-cash" aria-hidden="true"></i> Efectivo'
+      : '<i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin';
+    btn.addEventListener('click', function(e){ e.stopPropagation(); setCardPago(o.id, tipo, btn); });
+    div.appendChild(btn);
+  });
+
+  return div.outerHTML;
+}
+
 function renderList() {
   renderStats();
   document.getElementById('detail-area').innerHTML = '';
@@ -499,17 +536,7 @@ function renderList() {
       '<span class="oc-tel"><i class="ti ti-phone" style="font-size:14px;color:var(--or)" aria-hidden="true"></i> ' + formatTel(o.tel) + '</span>' +
       '</div>' +
       '<div class="oc-items">' + items + '</div>' +
-      '<div class="card-edit-row">' +
-        '<span class="card-edit-label">Delivery</span>' +
-        '<input class="card-edit-input" type="number" min="0" step="0.5" value="' + o.delivery.toFixed(2) + '" ' +
-          'onchange="updateDelivery(' + o.id + ',this.value)" onclick="event.stopPropagation()" ' +
-          'style="width:70px;" />' +
-        '<span class="card-edit-label" style="margin-left:8px;">Pago</span>' +
-        '<button class="card-pago-btn' + (o.pago === 'Efectivo' ? ' on' : '') + '" ' +
-          'onclick="setCardPago(' + o.id + ','Efectivo',this,event)"><i class="ti ti-cash" aria-hidden="true"></i> Efectivo</button>' +
-        '<button class="card-pago-btn' + (o.pago === 'Yape/Plin' ? ' on' : '') + '" ' +
-          'onclick="setCardPago(' + o.id + ','Yape/Plin',this,event)"><i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin</button>' +
-      '</div>' +
+      buildEditRow(o) +
       '<div class="oc-bot"><span class="oc-total">S/ ' + o.total.toFixed(2) + '</span>' +
       '<div class="oc-right">' +
       '<span class="oc-time">' + hora + '</span>' +
@@ -958,28 +985,38 @@ function startTimers() {
 
 function sincronizarEstados() {
   if (!turnoActivo) return;
-  fetch(API_URL + '?action=getTurnoActivo')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (!data.ok || !data.turno) return;
-      if (String(data.turno.id) !== String(turnoActivo.id)) return;
-      var actualizado = false;
-      data.pedidos.forEach(function(p) {
-        var local = orders.find(function(o) { return o.id === p.id; });
-        if (!local) return;
-        // Sincronizar estado y estado de pago si cambiaron
-        if (local.estado !== p.estado || local.estadoPago !== p.estadoPago) {
-          local.estado     = p.estado;
-          local.estadoPago = p.estadoPago;
-          actualizado = true;
-        }
-      });
-      if (actualizado) {
-        save();
-        renderList();
+  var cbName = 'cb_sync_' + Date.now();
+  var timeout = setTimeout(function() {
+    window[cbName] = null;
+    var el = document.getElementById('jsonp-' + cbName);
+    if (el) el.parentNode.removeChild(el);
+  }, 8000);
+
+  window[cbName] = function(data) {
+    clearTimeout(timeout);
+    var el = document.getElementById('jsonp-' + cbName);
+    if (el) el.parentNode.removeChild(el);
+    delete window[cbName];
+    if (!data || !data.ok || !data.turno) return;
+    if (String(data.turno.id) !== String(turnoActivo.id)) return;
+    var actualizado = false;
+    data.pedidos.forEach(function(p) {
+      var local = orders.find(function(o) { return o.id === p.id; });
+      if (!local) return;
+      if (local.estado !== p.estado || local.estadoPago !== p.estadoPago) {
+        local.estado     = p.estado;
+        local.estadoPago = p.estadoPago;
+        actualizado = true;
       }
-    })
-    .catch(function(err) { console.warn('sincronizarEstados error:', err); });
+    });
+    if (actualizado) { save(); renderList(); }
+  };
+
+  var script = document.createElement('script');
+  script.id  = 'jsonp-' + cbName;
+  script.src = API_URL + '?action=getTurnoActivo&callback=' + cbName;
+  script.onerror = function() { clearTimeout(timeout); };
+  document.head.appendChild(script);
 }
 
 function tickTimers() {
@@ -1041,69 +1078,80 @@ function playAlarm() {
 }
 
 
-addRow(); calcTots(); startTimers(); loadSheet();
+// Arrancar inmediatamente desde localStorage
+turnoActivo = JSON.parse(localStorage.getItem('lv_turno') || 'null');
+orders = JSON.parse(localStorage.getItem('lv_orders') || '[]');
+addRow(); calcTots(); renderTurnoBar(); renderList(); startTimers(); loadSheet();
 
+// Sincronizar con Sheets en segundo plano
 // Cargar turno activo y pedidos desde Sheets
 function cargarDesdeSheets() {
-  // Mostrar spinner mientras carga
-  var el = document.getElementById('order-list');
-  if (el) el.innerHTML = '<div class="empty-state"><i class="ti ti-loader" style="animation:spin 1s linear infinite" aria-hidden="true"></i><p>Sincronizando...</p></div>';
-
-  // Timeout de 8 segundos — si no responde, usar localStorage
+  // Usar JSONP para evitar bloqueo CORS de Google Apps Script en GET
+  var cbName = 'cb_turno_' + Date.now();
   var timeout = setTimeout(function() {
     console.warn('cargarDesdeSheets: timeout, usando localStorage');
+    window[cbName] = null;
+    var el = document.getElementById('jsonp-' + cbName);
+    if (el) el.parentNode.removeChild(el);
     usarFallback();
-  }, 8000);
+  }, 10000);
 
-  fetch(API_URL + '?action=getTurnoActivo')
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(data) {
-      clearTimeout(timeout);
-      if (data.ok && data.turno) {
-        turnoActivo = {
-          id:      data.turno.id,
-          inicio:  data.turno.inicio,
-          pedidos: data.pedidos.map(function(p){ return p.id; })
-        };
-        orders = data.pedidos.map(function(p) {
-          return {
-            id:         p.id,
-            fecha:      p.fecha || new Date().toISOString(),
-            tipo:       p.tipo,
-            tel:        p.tel,
-            pago:       p.pago,
-            products:   p.products,
-            subtotal:   p.subtotal,
-            delivery:   p.delivery,
-            total:      p.total,
-            estado:     p.estado,
-            estadoPago: p.estadoPago,
-            turnoId:    p.turnoId,
-            notas:      p.notas || ''
-          };
-        });
-        if (orders.length > 0) {
-          var maxId = orders.reduce(function(m,o){ return Math.max(m, o.id); }, 0);
-          if (maxId >= counter) { counter = maxId + 1; }
-          save();
-        }
-      } else {
-        turnoActivo = null;
-        orders = [];
-      }
-      appLoading = false;
-      saveTurno();
-      renderTurnoBar();
-      renderList();
-    })
-    .catch(function(err) {
-      clearTimeout(timeout);
-      console.warn('cargarDesdeSheets error:', err);
-      usarFallback();
+  window[cbName] = function(data) {
+    clearTimeout(timeout);
+    var el = document.getElementById('jsonp-' + cbName);
+    if (el) el.parentNode.removeChild(el);
+    delete window[cbName];
+    procesarDatosSheets(data);
+  };
+
+  var script = document.createElement('script');
+  script.id  = 'jsonp-' + cbName;
+  script.src = API_URL + '?action=getTurnoActivo&callback=' + cbName;
+  script.onerror = function() {
+    clearTimeout(timeout);
+    console.warn('cargarDesdeSheets: script error, usando localStorage');
+    usarFallback();
+  };
+  document.head.appendChild(script);
+}
+
+function procesarDatosSheets(data) {
+  if (data && data.ok && data.turno) {
+    turnoActivo = {
+      id:      data.turno.id,
+      inicio:  data.turno.inicio,
+      pedidos: data.pedidos.map(function(p){ return p.id; })
+    };
+    orders = data.pedidos.map(function(p) {
+      return {
+        id:         p.id,
+        fecha:      p.fecha || new Date().toISOString(),
+        tipo:       p.tipo,
+        tel:        p.tel,
+        pago:       p.pago,
+        products:   p.products,
+        subtotal:   p.subtotal,
+        delivery:   p.delivery,
+        total:      p.total,
+        estado:     p.estado,
+        estadoPago: p.estadoPago,
+        turnoId:    p.turnoId,
+        notas:      p.notas || ''
+      };
     });
+    if (orders.length > 0) {
+      var maxId = orders.reduce(function(m,o){ return Math.max(m, o.id); }, 0);
+      if (maxId >= counter) { counter = maxId + 1; }
+      save();
+    }
+    saveTurno();
+  } else {
+    turnoActivo = null;
+    orders = [];
+  }
+  appLoading = false;
+  renderTurnoBar();
+  renderList();
 }
 
 function usarFallback() {
@@ -1114,7 +1162,7 @@ function usarFallback() {
   renderList();
 }
 
-cargarDesdeSheets();
+// Sincronizacion en segundo plano manejada por sincronizarEstados() cada 30s
 </script>
 <!-- Service Worker para PWA offline -->
 <script>
