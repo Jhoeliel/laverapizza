@@ -819,7 +819,7 @@ function calcTots() {
   document.getElementById('t-del-val').textContent = 'S/ ' + del.toFixed(2);
   document.getElementById('t-total').textContent = 'S/ ' + (sub + del).toFixed(2);
 }
-var API_URL = "https://script.google.com/macros/s/AKfycbyj-tCqMvQoOQRkc_kRmDwOMGCGWiOhupR-jW31wzbtU8zb_NzIqyR3VJ6fplmPwXu8-g/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbzTcDDQusuPd2fgtqPkdC1CnkEO1Yhtd89xHM5eiarzzjYjnUQ-_KG5Vq9A-m3iL2XbRw/exec";
 
 function saveToSheet(ord) {
   fetch(API_URL, {
@@ -967,38 +967,47 @@ function startTimers() {
 
 function sincronizarEstados() {
   if (!turnoActivo) return;
-  var cbName = 'cb_sync_' + Date.now();
-  var timeout = setTimeout(function() {
-    window[cbName] = null;
-    var el = document.getElementById('jsonp-' + cbName);
-    if (el) el.parentNode.removeChild(el);
-  }, 8000);
+  fetch(API_URL + '?action=getTurnoActivo')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || !data.ok || !data.turno) return;
+      if (String(data.turno.id) !== String(turnoActivo.id)) return;
+      var actualizado = false;
 
-  window[cbName] = function(data) {
-    clearTimeout(timeout);
-    var el = document.getElementById('jsonp-' + cbName);
-    if (el) el.parentNode.removeChild(el);
-    delete window[cbName];
-    if (!data || !data.ok || !data.turno) return;
-    if (String(data.turno.id) !== String(turnoActivo.id)) return;
-    var actualizado = false;
-    data.pedidos.forEach(function(p) {
-      var local = orders.find(function(o) { return o.id === p.id; });
-      if (!local) return;
-      if (local.estado !== p.estado || local.estadoPago !== p.estadoPago) {
-        local.estado     = p.estado;
-        local.estadoPago = p.estadoPago;
-        actualizado = true;
-      }
-    });
-    if (actualizado) { save(); renderList(); }
-  };
+      // Actualizar pedidos existentes
+      data.pedidos.forEach(function(p) {
+        var local = orders.find(function(o) { return o.id === p.id; });
+        if (local) {
+          if (local.estado     !== p.estado     ||
+              local.estadoPago !== p.estadoPago  ||
+              local.delivery   !== p.delivery    ||
+              local.total      !== p.total       ||
+              local.pago       !== p.pago) {
+            local.estado     = p.estado;
+            local.estadoPago = p.estadoPago;
+            local.delivery   = p.delivery;
+            local.total      = p.total;
+            local.pago       = p.pago;
+            actualizado = true;
+          }
+        } else {
+          // Pedido nuevo desde otro dispositivo
+          orders.unshift({
+            id: p.id, fecha: p.fecha || new Date().toISOString(),
+            tipo: p.tipo, tel: p.tel, pago: p.pago,
+            products: p.products, subtotal: p.subtotal,
+            delivery: p.delivery, total: p.total,
+            estado: p.estado, estadoPago: p.estadoPago,
+            turnoId: p.turnoId, notas: p.notas || ''
+          });
+          turnoActivo.pedidos.push(p.id);
+          actualizado = true;
+        }
+      });
 
-  var script = document.createElement('script');
-  script.id  = 'jsonp-' + cbName;
-  script.src = API_URL + '?action=getTurnoActivo&callback=' + cbName;
-  script.onerror = function() { clearTimeout(timeout); };
-  document.head.appendChild(script);
+      if (actualizado) { save(); saveTurno(); renderList(); }
+    })
+    .catch(function(err) { console.warn('sincronizarEstados error:', err); });
 }
 
 function tickTimers() {
