@@ -456,40 +456,21 @@ function sc(v, l, ic) {
 }
 
 function buildEditRow(o) {
-  var div = document.createElement('div');
-  div.className = 'card-edit-row';
-
-  var lblDel = document.createElement('span');
-  lblDel.className = 'card-edit-label';
-  lblDel.textContent = 'Delivery';
-  div.appendChild(lblDel);
-
-  var inp = document.createElement('input');
-  inp.className = 'card-edit-input';
-  inp.type = 'number'; inp.min = '0'; inp.step = '0.5';
-  inp.value = o.delivery.toFixed(2);
-  inp.style.width = '70px';
-  inp.addEventListener('click', function(e){ e.stopPropagation(); });
-  inp.addEventListener('change', function(e){ e.stopPropagation(); updateDelivery(o.id, this.value); });
-  div.appendChild(inp);
-
-  var lblPago = document.createElement('span');
-  lblPago.className = 'card-edit-label';
-  lblPago.style.marginLeft = '8px';
-  lblPago.textContent = 'Pago';
-  div.appendChild(lblPago);
-
-  ['Efectivo','Yape/Plin'].forEach(function(tipo) {
-    var btn = document.createElement('button');
-    btn.className = 'card-pago-btn' + (o.pago === tipo ? ' on' : '');
-    btn.innerHTML = tipo === 'Efectivo'
-      ? '<i class="ti ti-cash" aria-hidden="true"></i> Efectivo'
-      : '<i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin';
-    btn.addEventListener('click', function(e){ e.stopPropagation(); setCardPago(o.id, tipo, btn); });
-    div.appendChild(btn);
-  });
-
-  return div.outerHTML;
+  var pagoEf = o.pago === 'Efectivo' ? ' on' : '';
+  var pagoYp = o.pago === 'Yape/Plin' ? ' on' : '';
+  return '<div class="card-edit-row" onclick="event.stopPropagation()">'
+    + '<span class="card-edit-label">Delivery</span>'
+    + '<input class="card-edit-input" type="number" min="0" step="0.5" value="' + o.delivery.toFixed(2) + '"'
+    + ' onclick="event.stopPropagation()"'
+    + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="width:70px;"/>'
+    + '<span class="card-edit-label" style="margin-left:8px;">Pago</span>'
+    + '<button class="card-pago-btn' + pagoEf + '" id="cpago-ef-' + o.id + '"'
+    + ' onclick="event.stopPropagation();setCardPago(' + o.id + ',0)">'
+    + '<i class="ti ti-cash" aria-hidden="true"></i> Efectivo</button>'
+    + '<button class="card-pago-btn' + pagoYp + '" id="cpago-yp-' + o.id + '"'
+    + ' onclick="event.stopPropagation();setCardPago(' + o.id + ',1)">'
+    + '<i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin</button>'
+    + '</div>';
 }
 
 function renderList() {
@@ -572,8 +553,9 @@ function updateDelivery(id, val) {
   renderList();
 }
 
-function setCardPago(id, nuevoPago, btn, e) {
-  e.stopPropagation();
+function setCardPago(id, idx) {
+  var tipos = ['Efectivo', 'Yape/Plin'];
+  var nuevoPago = tipos[idx];
   var o = orders.find(function(x) { return x.id === id; });
   if (!o) return;
   o.pago = nuevoPago;
