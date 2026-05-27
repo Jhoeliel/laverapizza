@@ -965,109 +965,97 @@ function startTimers() {
   syncInterval = setInterval(sincronizarEstados, 10000);
 }
 
-function sincronizarEstados() {
-  if (!turnoActivo) return;
+function procesarSync(data) {
+  if (!data || !data.ok) return;
 
-  // JSONP para evitar CORS desde GitHub Pages
-  var cbName = 'lv_sync_' + Date.now();
-  var done = false;
-
-  var timer = setTimeout(function() {
-    if (done) return;
-    done = true;
-    delete window[cbName];
-    var el = document.getElementById(cbName);
-    if (el && el.parentNode) el.parentNode.removeChild(el);
-  }, 9000);
-
-  window[cbName] = function(data) {
-    if (done) return;
-    done = true;
-    clearTimeout(timer);
-    delete window[cbName];
-    var el = document.getElementById(cbName);
-    if (el && el.parentNode) el.parentNode.removeChild(el);
-
-    if (!data || !data.ok) return;
-
-    // Si no hay turno activo localmente pero Sheets tiene uno, adoptarlo
-    if (data.turno && (!turnoActivo || String(data.turno.id) !== String(turnoActivo.id))) {
-      turnoActivo = {
-        id:      data.turno.id,
-        inicio:  data.turno.inicio,
-        pedidos: data.pedidos.map(function(p){ return p.id; })
+  // Turno diferente o sin turno local — adoptar el de Sheets
+  if (data.turno && (!turnoActivo || String(data.turno.id) !== String(turnoActivo.id))) {
+    turnoActivo = {
+      id:      data.turno.id,
+      inicio:  data.turno.inicio,
+      pedidos: data.pedidos.map(function(p){ return p.id; })
+    };
+    orders = data.pedidos.map(function(p) {
+      return {
+        id: p.id, fecha: p.fecha || new Date().toISOString(),
+        tipo: p.tipo, tel: p.tel, pago: p.pago,
+        products: p.products, subtotal: p.subtotal,
+        delivery: p.delivery, total: p.total,
+        estado: p.estado, estadoPago: p.estadoPago,
+        turnoId: p.turnoId, notas: p.notas || ''
       };
-      orders = data.pedidos.map(function(p) {
-        return {
-          id: p.id, fecha: p.fecha || new Date().toISOString(),
-          tipo: p.tipo, tel: p.tel, pago: p.pago,
-          products: p.products, subtotal: p.subtotal,
-          delivery: p.delivery, total: p.total,
-          estado: p.estado, estadoPago: p.estadoPago,
-          turnoId: p.turnoId, notas: p.notas || ''
-        };
-      });
-      if (orders.length > 0) {
-        var maxId = orders.reduce(function(m,o){ return Math.max(m,o.id); }, 0);
-        if (maxId >= counter) { counter = maxId + 1; }
-      }
-      save(); saveTurno(); renderTurnoBar(); renderList();
-      return;
+    });
+    if (orders.length > 0) {
+      var maxId = orders.reduce(function(m,o){ return Math.max(m,o.id); }, 0);
+      if (maxId >= counter) counter = maxId + 1;
     }
+    save(); saveTurno(); renderTurnoBar(); renderList();
+    return;
+  }
 
-    if (!data.turno) return;
+  if (!data.turno) {
+    // Turno cerrado desde otro dispositivo
+    if (turnoActivo) {
+      turnoActivo = null; orders = [];
+      save(); saveTurno(); renderTurnoBar(); renderList();
+    }
+    return;
+  }
 
-    var actualizado = false;
-    data.pedidos.forEach(function(p) {
-      var local = orders.find(function(o) { return o.id === p.id; });
-      if (local) {
-        if (local.estado     !== p.estado    ||
-            local.estadoPago !== p.estadoPago ||
-            local.delivery   !== p.delivery   ||
-            local.total      !== p.total      ||
-            local.pago       !== p.pago) {
-          local.estado     = p.estado;
-          local.estadoPago = p.estadoPago;
-          local.delivery   = p.delivery;
-          local.total      = p.total;
-          local.pago       = p.pago;
-          actualizado = true;
-        }
-      } else {
-        // Pedido nuevo desde otro dispositivo
-        orders.unshift({
-          id:         p.id,
-          fecha:      p.fecha || new Date().toISOString(),
-          tipo:       p.tipo,
-          tel:        p.tel,
-          pago:       p.pago,
-          products:   p.products,
-          subtotal:   p.subtotal,
-          delivery:   p.delivery,
-          total:      p.total,
-          estado:     p.estado,
-          estadoPago: p.estadoPago,
-          turnoId:    p.turnoId,
-          notas:      p.notas || ''
-        });
-        turnoActivo.pedidos.push(p.id);
+  // Mismo turno — sincronizar cambios
+  var actualizado = false;
+  data.pedidos.forEach(function(p) {
+    var local = orders.find(function(o){ return o.id === p.id; });
+    if (local) {
+      if (local.estado !== p.estado || local.estadoPago !== p.estadoPago ||
+          local.delivery !== p.delivery || local.total !== p.total || local.pago !== p.pago) {
+        local.estado = p.estado; local.estadoPago = p.estadoPago;
+        local.delivery = p.delivery; local.total = p.total; local.pago = p.pago;
         actualizado = true;
       }
+    } else {
+      orders.unshift({
+        id: p.id, fecha: p.fecha || new Date().toISOString(),
+        tipo: p.tipo, tel: p.tel, pago: p.pago, products: p.products,
+        subtotal: p.subtotal, delivery: p.delivery, total: p.total,
+        estado: p.estado, estadoPago: p.estadoPago, turnoId: p.turnoId, notas: p.notas || ''
+      });
+      turnoActivo.pedidos.push(p.id);
+      actualizado = true;
+    }
+  });
+  if (actualizado) { save(); saveTurno(); renderList(); }
+}
+
+function sincronizarEstados() {
+  // Intentar fetch primero (funciona si CORS OK)
+  fetch(API_URL + '?action=getTurnoActivo')
+    .then(function(r){ return r.json(); })
+    .then(function(data){ procesarSync(data); })
+    .catch(function() {
+      // Fallback a JSONP si fetch falla por CORS
+      var cbName = 'lv_sync_' + Date.now();
+      var done = false;
+      var timer = setTimeout(function(){
+        if (done) return; done = true;
+        delete window[cbName];
+        var el = document.getElementById(cbName);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      }, 9000);
+      window[cbName] = function(data) {
+        if (done) return; done = true;
+        clearTimeout(timer);
+        delete window[cbName];
+        var el = document.getElementById(cbName);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+        procesarSync(data);
+      };
+      var s = document.createElement('script');
+      s.id = cbName;
+      s.src = API_URL + '?action=getTurnoActivo&callback=' + cbName;
+      s.onerror = function(){ if (!done){ done=true; clearTimeout(timer); delete window[cbName]; }};
+      document.head.appendChild(s);
     });
-
-    if (actualizado) { save(); saveTurno(); renderList(); }
-  };
-
-  var s = document.createElement('script');
-  s.id  = cbName;
-  s.src = API_URL + '?action=getTurnoActivo&callback=' + cbName;
-  s.onerror = function() {
-    if (done) return;
-    done = true;
-    clearTimeout(timer);
-    delete window[cbName];
-  };
-  document.head.appendChild(s);
 }
 
 function tickTimers() {
