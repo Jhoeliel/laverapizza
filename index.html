@@ -332,6 +332,7 @@ var tipo = 'delivery', pago = 'Efectivo', estadoPago = 'Pendiente', showAll = fa
 var turnoActivo = null;
 var turnosHist  = [];
 var appLoading  = true;
+var pendingChanges = {}; // {orderId_field: timestamp} — protege cambios locales del sync
 
 // ── TURNOS ──
 function saveTurno() {
@@ -536,6 +537,7 @@ function updateDelivery(id, val) {
   o.delivery = newDel;
   o.total = parseFloat((o.subtotal + newDel).toFixed(2));
   save();
+  markPending(id, 'delivery');
   postJsonp({action: 'updateDelivery', id: id, delivery: newDel, total: o.total});
   updateCardTotals(id, o.total, o.delivery);
 }
@@ -547,6 +549,7 @@ function setCardPago(id, idx) {
   if (!o) return;
   o.pago = nuevoPago;
   save();
+  markPending(id, 'pago');
   postJsonp({action: 'updatePago', id: id, pago: nuevoPago});
   updateCardPagoBtn(id, nuevoPago);
 }
@@ -557,6 +560,7 @@ function togglePago(id, e) {
   if (!o) return;
   o.estadoPago = o.estadoPago === 'Pagado' ? 'Pendiente' : 'Pagado';
   save();
+  markPending(id, 'estadoPago');
   updateSheetEstadoPago(id, o.estadoPago);
   updateCardPagoToggle(id, o.estadoPago, o.estado);
 }
@@ -573,6 +577,7 @@ function changeStatus(id, est) {
   }
   o.estado = est;
   save();
+  markPending(id, 'estado');
   updateSheetStatus(id, est);
   updateCardEstado(id, est, o.estadoPago);
 }
@@ -954,6 +959,17 @@ function startTimers() {
 // ============================================================
 // POST via JSONP a Google Apps Script (evita CORS desde GitHub Pages)
 // ============================================================
+function markPending(id, field) {
+  pendingChanges[id + '_' + field] = Date.now();
+}
+function isPending(id, field) {
+  var ts = pendingChanges[id + '_' + field];
+  if (!ts) return false;
+  if (Date.now() - ts < 12000) return true; // proteger por 12 segundos
+  delete pendingChanges[id + '_' + field];
+  return false;
+}
+
 function postJsonp(params, cbOk, cbErr) {
   var cbName = 'lv_post_' + Date.now() + '_' + Math.floor(Math.random()*9999);
   var done = false;
@@ -1108,18 +1124,29 @@ function procesarSync(data) {
       var diffTotal     = local.total      !== p.total;
       var diffPago      = local.pago       !== p.pago;
       if (diffEstado || diffEstadoPago || diffDelivery || diffTotal || diffPago) {
-        // Actualizar modelo
-        if (diffEstado)     { local.estado     = p.estado;     updateCardEstado(local.id, p.estado, p.estadoPago); }
-        if (diffEstadoPago) { local.estadoPago = p.estadoPago; updateCardPagoToggle(local.id, p.estadoPago, p.estado); }
-        if (diffDelivery || diffTotal) {
+        // Solo aplicar si no hay un cambio local reciente en vuelo (evita pisarse)
+        if (diffEstado && !isPending(local.id, 'estado')) {
+          local.estado = p.estado;
+          updateCardEstado(local.id, p.estado, p.estadoPago);
+          actualizado = true;
+        }
+        if (diffEstadoPago && !isPending(local.id, 'estadoPago')) {
+          local.estadoPago = p.estadoPago;
+          updateCardPagoToggle(local.id, p.estadoPago, p.estado);
+          actualizado = true;
+        }
+        if ((diffDelivery || diffTotal) && !isPending(local.id, 'delivery')) {
           local.delivery = p.delivery; local.total = p.total;
           updateCardTotals(local.id, p.total, p.delivery);
-          // Actualizar input delivery si no tiene foco
           var inp = document.getElementById('del-inp-' + local.id);
           if (inp && document.activeElement !== inp) inp.value = p.delivery.toFixed(2);
+          actualizado = true;
         }
-        if (diffPago) { local.pago = p.pago; updateCardPagoBtn(local.id, p.pago); }
-        actualizado = true;
+        if (diffPago && !isPending(local.id, 'pago')) {
+          local.pago = p.pago;
+          updateCardPagoBtn(local.id, p.pago);
+          actualizado = true;
+        }
       }
     } else {
       orders.unshift({
