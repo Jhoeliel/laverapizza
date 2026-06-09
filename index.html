@@ -1040,6 +1040,7 @@ function postJsonp(params, cbOk, cbErr) {
       typeof params[k] === 'object' ? JSON.stringify(params[k]) : params[k]
     );
   });
+  console.log('[JSONP]', qs.substring(0, 200));
   var s = document.createElement('script');
   s.id = cbName;
   s.src = API_URL + '?' + qs;
