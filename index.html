@@ -1006,13 +1006,13 @@ function startTimers() {
 // POST via JSONP a Google Apps Script (evita CORS desde GitHub Pages)
 // ============================================================
 function markPending(id, field) {
-  pendingChanges[id + '_' + field] = Date.now();
+  pendingChanges[String(id) + '_' + field] = Date.now();
 }
 function isPending(id, field) {
-  var ts = pendingChanges[id + '_' + field];
+  var ts = pendingChanges[String(id) + '_' + field];
   if (!ts) return false;
   if (Date.now() - ts < 12000) return true; // proteger por 12 segundos
-  delete pendingChanges[id + '_' + field];
+  delete pendingChanges[String(id) + '_' + field];
   return false;
 }
 
@@ -1032,7 +1032,6 @@ function postJsonp(params, cbOk, cbErr) {
     delete window[cbName];
     var el = document.getElementById(cbName);
     if (el && el.parentNode) el.parentNode.removeChild(el);
-    console.log('[postJsonp resp]', JSON.stringify(res));
     if (cbOk) cbOk(res);
   };
   var qs = 'callback=' + cbName;
@@ -1041,7 +1040,6 @@ function postJsonp(params, cbOk, cbErr) {
       typeof params[k] === 'object' ? JSON.stringify(params[k]) : params[k]
     );
   });
-  console.log('[postJsonp]', API_URL + '?' + qs);
   var s = document.createElement('script');
   s.id = cbName;
   s.src = API_URL + '?' + qs;
@@ -1163,7 +1161,7 @@ function procesarSync(data) {
   var ahora = Date.now();
   var actualizado = false;
   data.pedidos.forEach(function(p) {
-    var local = orders.find(function(o){ return o.id === p.id; });
+    var local = orders.find(function(o){ return String(o.id) === String(p.id); });
     if (local) {
       // Detectar diferencias que vienen de OTRO dispositivo
       var diffEstado    = local.estado     !== p.estado;
