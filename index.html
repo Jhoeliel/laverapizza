@@ -1011,7 +1011,7 @@ function markPending(id, field) {
 function isPending(id, field) {
   var ts = pendingChanges[String(id) + '_' + field];
   if (!ts) return false;
-  if (Date.now() - ts < 12000) return true; // proteger por 12 segundos
+  if (Date.now() - ts < 30000) return true; // proteger por 30 segundos
   delete pendingChanges[String(id) + '_' + field];
   return false;
 }
@@ -1163,6 +1163,7 @@ function procesarSync(data) {
   var actualizado = false;
   data.pedidos.forEach(function(p) {
     var local = orders.find(function(o){ return String(o.id) === String(p.id); });
+    if (!local) console.log('[SYNC] pedido no encontrado local, id:', p.id, typeof p.id, 'orders ids:', orders.map(function(o){return String(o.id);}));
     if (local) {
       // Detectar diferencias que vienen de OTRO dispositivo
       var diffEstado    = local.estado     !== p.estado;
