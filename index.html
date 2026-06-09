@@ -1032,6 +1032,7 @@ function postJsonp(params, cbOk, cbErr) {
     delete window[cbName];
     var el = document.getElementById(cbName);
     if (el && el.parentNode) el.parentNode.removeChild(el);
+    console.log('[postJsonp resp]', JSON.stringify(res));
     if (cbOk) cbOk(res);
   };
   var qs = 'callback=' + cbName;
@@ -1040,6 +1041,7 @@ function postJsonp(params, cbOk, cbErr) {
       typeof params[k] === 'object' ? JSON.stringify(params[k]) : params[k]
     );
   });
+  console.log('[postJsonp]', API_URL + '?' + qs);
   var s = document.createElement('script');
   s.id = cbName;
   s.src = API_URL + '?' + qs;
