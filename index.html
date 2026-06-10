@@ -108,13 +108,13 @@ html,body{height:100%;background:var(--dark);font-family:'Barlow',sans-serif;col
 .oc-right{display:flex;align-items:center;gap:8px;}
 .oc-time{font-size:10px;color:var(--muted);}
 .stt-sel{background:var(--surf2);border:1px solid var(--bd2);border-radius:6px;padding:4px 7px;font-size:11px;color:var(--tx);font-family:'Barlow',sans-serif;cursor:pointer;font-weight:700;}
-.card-edit-row{display:flex;flex-direction:column;gap:0;padding:12px 14px;border-top:1px solid var(--bd);background:rgba(255,255,255,.02);}
+.card-edit-row{display:flex;flex-direction:column;gap:0;padding:12px 14px 14px;border-top:1px solid var(--bd);background:rgba(255,255,255,.03);}
 .card-edit-row.incompleto{border-left:3px solid #f59e0b;}
-.card-edit-line{display:flex;align-items:center;gap:8px;min-height:34px;}
+.card-edit-line{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:8px;min-height:38px;}.card-edit-line-btns{display:flex;gap:6px;width:100%;}.card-edit-line-btns .card-pago-btn{flex:1;}
 .card-edit-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);white-space:nowrap;min-width:48px;}
 .card-edit-input{background:var(--surf2);border:1px solid var(--bd2);border-radius:6px;padding:4px 8px;font-size:13px;color:var(--tx);font-family:'JetBrains Mono','Courier New',monospace;width:80px;outline:none;}
 .card-edit-input:focus{border-color:var(--or);}
-.card-pago-btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;border:1px solid var(--bd2);background:transparent;color:var(--muted);transition:all .15s;}
+.card-pago-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 0;border-radius:6px;font-size:12px;flex:1;justify-content:center;text-align:center;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;border:1px solid var(--bd2);background:transparent;color:var(--muted);transition:all .15s;}
 .card-pago-btn.on{background:rgba(34,197,94,.12);border-color:var(--green);color:var(--green);}
 .btn-detail{background:rgba(34,197,94,.12);border:1px solid var(--green);border-radius:6px;padding:4px 8px;color:var(--green);font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .15s;}
 .btn-detail:hover{background:rgba(34,197,94,.25);color:var(--green);}
@@ -514,29 +514,33 @@ function buildEditRow(o) {
     + '<span class="card-edit-label"><i class="ti ti-phone" aria-hidden="true"></i></span>'
     + '<input class="card-edit-input" id="tel-inp-' + o.id + '" type="tel" placeholder="999 000 000" value="' + telVal + '"'
     + ' onclick="event.stopPropagation()"'
-    + ' onchange="event.stopPropagation();updateTel(' + o.id + ',this.value)" style="width:120px;font-size:13px;"/>'
-    + '<span class="card-edit-label" style="margin-left:10px;">Delivery</span>'
+    + ' onchange="event.stopPropagation();updateTel(' + o.id + ',this.value)" style="flex:1;font-size:13px;"/>'
+    + '<span class="card-edit-label" style="font-size:11px;color:var(--muted);white-space:nowrap;">Delivery</span>'
     + '<input class="card-edit-input" id="del-inp-' + o.id + '" type="number" min="0" step="any" value="' + (o.delivery || '') + '"'
     + ' onclick="event.stopPropagation()"'
-    + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="width:72px;font-size:13px;"/>'
+    + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="width:80px;font-size:13px;"/>'
     + '</div>'
     // Fila 2: Tipo
     + '<div class="card-edit-line" style="margin-top:10px;">'
     + '<span class="card-edit-label">Tipo</span>'
+    + '<div class="card-edit-line-btns">'
     + '<button class="card-pago-btn' + (o.tipo === 'delivery' ? ' on' : '') + '" id="ctipo-del-' + o.id + '"'
     + ' onclick="event.stopPropagation();updateCardTipo(' + o.id + ',\'delivery\')"><i class="ti ti-motorcycle" aria-hidden="true"></i> Delivery</button>'
     + '<button class="card-pago-btn' + (o.tipo === 'pickup' ? ' on' : '') + '" id="ctipo-pic-' + o.id + '"'
     + ' onclick="event.stopPropagation();updateCardTipo(' + o.id + ',\'pickup\')"><i class="ti ti-walk" aria-hidden="true"></i> Pickup</button>'
     + '</div>'
+    + '</div>'
     // Fila 3: Pago
     + '<div class="card-edit-line" style="margin-top:10px;">'
     + '<span class="card-edit-label">Pago</span>'
+    + '<div class="card-edit-line-btns">'
     + '<button class="card-pago-btn' + pagoEf + '" id="cpago-ef-' + o.id + '"'
     + ' onclick="event.stopPropagation();setCardPago(' + o.id + ',0)">'
     + '<i class="ti ti-cash" aria-hidden="true"></i> Efectivo</button>'
     + '<button class="card-pago-btn' + pagoYp + '" id="cpago-yp-' + o.id + '"'
     + ' onclick="event.stopPropagation();setCardPago(' + o.id + ',1)">'
     + '<i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin</button>'
+    + '</div>'
     + '</div>'
     + '</div>';
 }
