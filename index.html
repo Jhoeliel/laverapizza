@@ -1139,10 +1139,12 @@ function procesarSync(data) {
         turnoId: p.turnoId, notas: p.notas || ''
       };
     });
-    if (orders.length > 0) {
-      var maxId = orders.reduce(function(m,o){ return Math.max(m,o.id); }, 0);
-      if (maxId >= counter) counter = maxId + 1;
-    }
+    var globalMax2 = data.maxId || 0;
+    var localMax2  = orders.length > 0
+      ? orders.reduce(function(m,o){ return Math.max(m,o.id); }, 0)
+      : 0;
+    var syncMax = Math.max(globalMax2, localMax2);
+    if (syncMax >= counter) counter = syncMax + 1;
     save(); saveTurno(); renderTurnoBar(); renderList();
     return;
   }
@@ -1377,11 +1379,14 @@ function procesarDatosSheets(data) {
         notas:      p.notas || ''
       };
     });
-    if (orders.length > 0) {
-      var maxId = orders.reduce(function(m,o){ return Math.max(m, o.id); }, 0);
-      if (maxId >= counter) { counter = maxId + 1; }
-      save();
-    }
+    // Usar maxId global de Sheets si está disponible, si no calcular del turno
+    var globalMax = data.maxId || 0;
+    var localMax  = orders.length > 0
+      ? orders.reduce(function(m,o){ return Math.max(m, o.id); }, 0)
+      : 0;
+    var maxId = Math.max(globalMax, localMax);
+    if (maxId >= counter) { counter = maxId + 1; }
+    save();
     saveTurno();
   } else {
     turnoActivo = null;
