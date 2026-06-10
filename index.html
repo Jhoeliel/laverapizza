@@ -450,6 +450,28 @@ function sc(v, l, ic) {
   return '<div class="sc"><div class="sc-v">' + v + '</div><div class="sc-l"><i class="ti ' + ic + '" aria-hidden="true"></i> ' + l + '</div></div>';
 }
 
+function updateCardTipo(id, nuevoTipo) {
+  var o = orders.find(function(x){ return x.id === id; });
+  if (!o) return;
+  o.tipo = nuevoTipo;
+  save();
+  markPending(id, 'tipo');
+  postJsonp({action: 'updateTipo', id: id, tipo: nuevoTipo});
+  var card = document.getElementById('card-' + id);
+  if (!card) return;
+  var badgeTipo = card.querySelector('.badge.b-del, .badge.b-pic');
+  if (badgeTipo) {
+    badgeTipo.className = nuevoTipo === 'delivery' ? 'badge b-del' : 'badge b-pic';
+    badgeTipo.innerHTML = nuevoTipo === 'delivery'
+      ? '<i class="ti ti-motorcycle" aria-hidden="true"></i> Delivery'
+      : '<i class="ti ti-walk" aria-hidden="true"></i> Pickup';
+  }
+  var btnDel = document.getElementById('ctipo-del-' + id);
+  var btnPic = document.getElementById('ctipo-pic-' + id);
+  if (btnDel) btnDel.className = 'card-pago-btn' + (nuevoTipo === 'delivery' ? ' on' : '');
+  if (btnPic) btnPic.className = 'card-pago-btn' + (nuevoTipo === 'pickup' ? ' on' : '');
+}
+
 function updateTel(id, val) {
   var o = orders.find(function(x){ return x.id === id; });
   if (!o) return;
@@ -498,7 +520,15 @@ function buildEditRow(o) {
     + ' onclick="event.stopPropagation()"'
     + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="width:65px;"/>'
     + '</div>'
-    // Fila 2: Pago
+    // Fila 2: Tipo
+    + '<div class="card-edit-line" style="margin-top:6px;">'
+    + '<span class="card-edit-label">Tipo</span>'
+    + '<button class="card-pago-btn' + (o.tipo === 'delivery' ? ' on' : '') + '" id="ctipo-del-' + o.id + '"'
+    + ' onclick="event.stopPropagation();updateCardTipo(' + o.id + ',\'delivery\')"><i class="ti ti-motorcycle" aria-hidden="true"></i> Delivery</button>'
+    + '<button class="card-pago-btn' + (o.tipo === 'pickup' ? ' on' : '') + '" id="ctipo-pic-' + o.id + '"'
+    + ' onclick="event.stopPropagation();updateCardTipo(' + o.id + ',\'pickup\')"><i class="ti ti-walk" aria-hidden="true"></i> Pickup</button>'
+    + '</div>'
+    // Fila 3: Pago
     + '<div class="card-edit-line" style="margin-top:6px;">'
     + '<span class="card-edit-label">Pago</span>'
     + '<button class="card-pago-btn' + pagoEf + '" id="cpago-ef-' + o.id + '"'
