@@ -612,6 +612,7 @@ function togglePago(id, e) {
 }
 
 function changeStatus(id, est) {
+  if (window._noChangeEvent) return; // cambio programático, no del usuario
   var o = orders.find(function(x) { return x.id === id; });
   if (!o) return;
   if (est === 'finalizado' && o.estadoPago !== 'Pagado') {
@@ -1040,7 +1041,6 @@ function postJsonp(params, cbOk, cbErr) {
       typeof params[k] === 'object' ? JSON.stringify(params[k]) : params[k]
     );
   });
-  console.log('[JSONP]', qs.substring(0, 200));
   var s = document.createElement('script');
   s.id = cbName;
   s.src = API_URL + '?' + qs;
@@ -1106,7 +1106,7 @@ function updateCardEstado(id, estado, estadoPago) {
   }
   var sel = card.querySelector('.stt-sel');
   if (sel) {
-    if (sel.value !== estado) sel.value = estado;
+    if (sel.value !== estado) { window._noChangeEvent = true; sel.value = estado; window._noChangeEvent = false; }
     var finOpt = sel.querySelector('option[value="finalizado"]');
     if (finOpt) finOpt.disabled = (estadoPago !== 'Pagado');
   }
@@ -1163,7 +1163,6 @@ function procesarSync(data) {
   var actualizado = false;
   data.pedidos.forEach(function(p) {
     var local = orders.find(function(o){ return String(o.id) === String(p.id); });
-    if (!local) console.log('[SYNC] pedido no encontrado local, id:', p.id, typeof p.id, 'orders ids:', orders.map(function(o){return String(o.id);}));
     if (local) {
       // Detectar diferencias que vienen de OTRO dispositivo
       var diffEstado    = local.estado     !== p.estado;
@@ -1173,15 +1172,11 @@ function procesarSync(data) {
       var diffPago      = local.pago       !== p.pago;
       if (diffEstado || diffEstadoPago || diffDelivery || diffTotal || diffPago) {
         // Solo aplicar si no hay un cambio local reciente en vuelo (evita pisarse)
-        if (diffEstado) {
-          var pend = isPending(local.id, 'estado');
-          console.log('[SYNC] diffEstado id=' + local.id + ' pending=' + pend + ' local=' + local.estado + ' sheets=' + p.estado);
-          if (!pend) {
-            local.estado = p.estado;
-            updateCardEstado(local.id, p.estado, p.estadoPago);
-            actualizado = true;
-          }
-        }
+        if (diffEstado && !isPending(local.id, 'estado')) {
+          local.estado = p.estado;
+          updateCardEstado(local.id, p.estado, p.estadoPago);
+          actualizado = true;
+                }
         if (diffEstadoPago && !isPending(local.id, 'estadoPago')) {
           local.estadoPago = p.estadoPago;
           updateCardPagoToggle(local.id, p.estadoPago, p.estado);
@@ -1267,7 +1262,7 @@ function tickTimers() {
       var card = el.closest('.ocard');
       if (card) { card.classList.remove('preparando'); card.classList.add('retrasado'); }
       var sel = card ? card.querySelector('.stt-sel') : null;
-      if (sel) sel.value = 'retrasado';
+      if (sel) { window._noChangeEvent = true; sel.value = 'retrasado'; window._noChangeEvent = false; }
       if (!alertedOrders[o.id]) {
         alertedOrders[o.id] = true;
         playAlarm();
