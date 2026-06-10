@@ -611,8 +611,14 @@ function togglePago(id, e) {
   updateCardPagoToggle(id, o.estadoPago, o.estado);
 }
 
+var _lastChangeStatus = {};
 function changeStatus(id, est) {
   if (window._noChangeEvent) return; // cambio programático, no del usuario
+  // Debounce: ignorar si el mismo cambio ocurrió hace menos de 1 segundo
+  var key = String(id) + '_' + est;
+  var now = Date.now();
+  if (_lastChangeStatus[key] && now - _lastChangeStatus[key] < 1000) return;
+  _lastChangeStatus[key] = now;
   var o = orders.find(function(x) { return x.id === id; });
   if (!o) return;
   if (est === 'finalizado' && o.estadoPago !== 'Pagado') {
