@@ -510,15 +510,15 @@ function buildEditRow(o) {
   var incompleto = (!o.tel || !o.pago) ? ' incompleto' : '';
   return '<div class="card-edit-row' + incompleto + '" onclick="event.stopPropagation()">'
     // Fila 1: Teléfono + Delivery en la misma línea
-    + '<div class="card-edit-line">'
-    + '<span class="card-edit-label"><i class="ti ti-phone" aria-hidden="true"></i></span>'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">'
+    + '<span class="card-edit-label" style="flex-shrink:0;"><i class="ti ti-phone" aria-hidden="true"></i></span>'
     + '<input class="card-edit-input" id="tel-inp-' + o.id + '" type="tel" placeholder="999 000 000" value="' + telVal + '"'
     + ' onclick="event.stopPropagation()"'
-    + ' onchange="event.stopPropagation();updateTel(' + o.id + ',this.value)" style="width:48%;font-size:16px;font-weight:700;padding:9px 10px;"/>'
-    + '<span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);white-space:nowrap;">S/</span>'
+    + ' onchange="event.stopPropagation();updateTel(' + o.id + ',this.value)" style="flex:2;font-size:16px;font-weight:700;padding:9px 10px;min-width:0;"/>'
+    + '<span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);white-space:nowrap;flex-shrink:0;">S/</span>'
     + '<input class="card-edit-input" id="del-inp-' + o.id + '" type="number" min="0" step="any" value="' + (o.delivery || '') + '"'
     + ' onclick="event.stopPropagation()"'
-    + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="flex:1;font-size:14px;padding:9px 10px;"/>'
+    + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="flex:1;font-size:14px;padding:9px 10px;min-width:0;"/>'
     + '</div>'
     // Fila 3: Tipo
     + '<div class="card-edit-line" style="margin-top:10px;">'
