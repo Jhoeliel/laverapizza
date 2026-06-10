@@ -514,13 +514,16 @@ function buildEditRow(o) {
     + '<span class="card-edit-label"><i class="ti ti-phone" aria-hidden="true"></i></span>'
     + '<input class="card-edit-input" id="tel-inp-' + o.id + '" type="tel" placeholder="999 000 000" value="' + telVal + '"'
     + ' onclick="event.stopPropagation()"'
-    + ' onchange="event.stopPropagation();updateTel(' + o.id + ',this.value)" style="flex:1;font-size:15px;font-weight:600;padding:8px 10px;"/>'
-    + '<span class="card-edit-label" style="font-size:11px;color:var(--muted);white-space:nowrap;">Delivery</span>'
+    + ' onchange="event.stopPropagation();updateTel(' + o.id + ',this.value)" style="width:100%;font-size:15px;font-weight:600;padding:8px 10px;"/>'
+    + '</div>'
+    // Fila 2: Delivery
+    + '<div class="card-edit-line" style="margin-top:8px;">'
+    + '<span class="card-edit-label" style="font-size:11px;">Delivery</span>'
     + '<input class="card-edit-input" id="del-inp-' + o.id + '" type="number" min="0" step="any" value="' + (o.delivery || '') + '"'
     + ' onclick="event.stopPropagation()"'
-    + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="width:80px;font-size:13px;"/>'
+    + ' onchange="event.stopPropagation();updateDelivery(' + o.id + ',this.value)" style="width:100px;font-size:14px;padding:8px 10px;"/>'
     + '</div>'
-    // Fila 2: Tipo
+    // Fila 3: Tipo
     + '<div class="card-edit-line" style="margin-top:10px;">'
     + '<span class="card-edit-label">Tipo</span>'
     + '<div class="card-edit-line-btns">'
@@ -530,7 +533,7 @@ function buildEditRow(o) {
     + ' onclick="event.stopPropagation();updateCardTipo(' + o.id + ',\'pickup\')"><i class="ti ti-walk" aria-hidden="true"></i> Pickup</button>'
     + '</div>'
     + '</div>'
-    // Fila 3: Pago
+    // Fila 4: Pago
     + '<div class="card-edit-line" style="margin-top:10px;">'
     + '<span class="card-edit-label">Pago</span>'
     + '<div class="card-edit-line-btns">'
