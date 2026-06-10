@@ -451,13 +451,12 @@ function sc(v, l, ic) {
 }
 
 function updateCardTipo(id, nuevoTipo) {
-  console.log('[TIPO] id=' + id + ' tipo=' + nuevoTipo);
   var o = orders.find(function(x){ return x.id === id; });
-  if (!o) { console.log('[TIPO] pedido no encontrado'); return; }
+  if (!o) return;
   o.tipo = nuevoTipo;
   save();
   markPending(id, 'tipo');
-  postJsonp({action: 'updateTipo', id: id, tipo: nuevoTipo}, function(r){ console.log('[TIPO resp]', JSON.stringify(r)); }, function(e){ console.log('[TIPO err]', e); });
+  postJsonp({action: 'updateTipo', id: id, tipo: nuevoTipo});
   var card = document.getElementById('card-' + id);
   if (!card) return;
   var badgeTipo = card.querySelector('.badge.b-del, .badge.b-pic');
@@ -893,7 +892,7 @@ function calcTots() {
   document.getElementById('t-del-val').textContent = 'S/ ' + del.toFixed(2);
   document.getElementById('t-total').textContent = 'S/ ' + (sub + del).toFixed(2);
 }
-var API_URL = "https://script.google.com/macros/s/AKfycbxzxC1rY2UmGWJqhem7AAwmOaJYzmdWZUksv1hwCCPio-wj1EtNxuLeaVYMSebEtquuAg/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbxI69ocCIJEC7ehpVN1sojZvRLpdL2qZfWgFdDac82qFMBXPakYU32iuM4P9VLUQg8g2Q/exec";
 
 function saveToSheet(ord) {
   postJsonp({
