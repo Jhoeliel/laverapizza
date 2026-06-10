@@ -318,7 +318,7 @@ select option{background:var(--surf2);}
 
 <script>
 var orders = JSON.parse(localStorage.getItem('lv_orders') || '[]');
-var counter = parseInt(localStorage.getItem('lv_ctr') || '1');
+var counter = parseInt(localStorage.getItem('lv_ctr') || Date.now());
 var catalog = [
   {name:'Pizza Personal Margarita',price:18},
   {name:'Pizza Personal Especial',price:22},
@@ -907,7 +907,7 @@ function regOrder() {
   var del = tipo === 'delivery' ? (parseFloat(document.getElementById('inp-delivery').value) || 0) : 0;
   var sub = parseFloat(prods.reduce(function(a, p) { return a + p.subtotal; }, 0).toFixed(2));
   var ord = {
-    id: counter++, fecha: new Date().toISOString(), tipo: tipo, tel: tel, pago: pago,
+    id: Math.max(counter++, Date.now()), fecha: new Date().toISOString(), tipo: tipo, tel: tel, pago: pago,
     products: prods, subtotal: sub, delivery: parseFloat(del.toFixed(2)),
     total: parseFloat((sub + del).toFixed(2)), estado: 'preparando',
     estadoPago: estadoPago,
