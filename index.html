@@ -470,6 +470,11 @@ function updateCardTipo(id, nuevoTipo) {
   var btnPic = document.getElementById('ctipo-pic-' + id);
   if (btnDel) btnDel.className = 'card-pago-btn' + (nuevoTipo === 'delivery' ? ' on' : '');
   if (btnPic) btnPic.className = 'card-pago-btn' + (nuevoTipo === 'pickup' ? ' on' : '');
+  // Recalcular total según tipo
+  o.total = parseFloat((o.subtotal + (nuevoTipo === 'pickup' ? 0 : o.delivery)).toFixed(2));
+  save();
+  postJsonp({action: 'updateDelivery', id: id, delivery: o.delivery, total: o.total});
+  updateCardTotals(id, o.total, o.delivery);
 }
 
 function updateTel(id, val) {
@@ -615,7 +620,7 @@ function updateDelivery(id, val) {
   if (!o) return;
   var newDel = parseFloat(val) || 0;
   o.delivery = newDel;
-  o.total = parseFloat((o.subtotal + newDel).toFixed(2));
+  o.total = parseFloat((o.subtotal + (o.tipo === 'pickup' ? 0 : newDel)).toFixed(2));
   save();
   markPending(id, 'delivery');
   postJsonp({action: 'updateDelivery', id: id, delivery: newDel, total: o.total});
