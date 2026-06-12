@@ -46,7 +46,7 @@ html,body{height:100%;background:var(--dark);font-family:'Barlow',sans-serif;col
 .activos-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);}
 .btn-historial{background:transparent;border:1px solid var(--bd2);border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:'Barlow',sans-serif;display:flex;align-items:center;gap:5px;transition:all .15s;}
 .btn-historial.on{border-color:var(--or);color:var(--or);}
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 12px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 12px;}
 .sc{background:var(--surf);border-radius:10px;padding:10px 12px;border:1px solid var(--bd);}
 .sc-v{font-size:20px;font-weight:800;}
 .sc-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
@@ -355,10 +355,11 @@ function toggleTurno() {
     if (!confirm('¿Cerrar el turno actual? Los pedidos activos quedarán en el historial.')) return;
     var fin = new Date().toISOString();
     var tOrds = orders.filter(function(o){ return turnoActivo.pedidos.indexOf(o.id) !== -1; });
-    var recaudado = tOrds.filter(function(o){ return o.estadoPago === 'Pagado'; })
-      .reduce(function(a,o){ return a+o.total; }, 0);
+    var pagadosTurno = tOrds.filter(function(o){ return o.estadoPago === 'Pagado'; });
+    var recaudado = pagadosTurno.reduce(function(a,o){ return a + o.subtotal; }, 0);
+    var delivTurno = pagadosTurno.reduce(function(a,o){ return a + (o.tipo !== 'pickup' ? (o.delivery || 0) : 0); }, 0);
     postJsonp({action: 'cerrarTurno', turnoId: turnoActivo.id,
-      fin: fin, totalPedidos: tOrds.length, recaudado: recaudado});
+      fin: fin, totalPedidos: tOrds.length, recaudado: recaudado, delivery: delivTurno});
     turnoActivo = null;
     orders = [];
     saveTurno();
@@ -439,12 +440,14 @@ function renderStats() {
     : [];
   var activos   = tOrds.filter(function(o){ return o.estado !== 'finalizado'; }).length;
   var ret       = tOrds.filter(function(o){ return o.estado === 'retrasado'; }).length;
-  var recaudado = tOrds.filter(function(o){ return o.estadoPago === 'Pagado'; })
-    .reduce(function(a,o){ return a+o.total; }, 0);
+  var pagados   = tOrds.filter(function(o){ return o.estadoPago === 'Pagado'; });
+  var recaudado = pagados.reduce(function(a,o){ return a + o.subtotal; }, 0);
+  var delivTot  = pagados.reduce(function(a,o){ return a + (o.tipo !== 'pickup' ? (o.delivery || 0) : 0); }, 0);
   document.getElementById('stats-row').innerHTML =
     sc(activos, 'Activos', 'ti-flame') +
     sc(ret, 'Retrasados', 'ti-alert-triangle') +
-    sc('S/ ' + recaudado.toFixed(2), 'Recaudado', 'ti-coin');
+    sc('S/ ' + recaudado.toFixed(2), 'Ventas', 'ti-coin') +
+    sc('S/ ' + delivTot.toFixed(2), 'Delivery', 'ti-motorcycle');
 }
 function sc(v, l, ic) {
   return '<div class="sc"><div class="sc-v">' + v + '</div><div class="sc-l"><i class="ti ' + ic + '" aria-hidden="true"></i> ' + l + '</div></div>';
