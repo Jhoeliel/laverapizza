@@ -247,35 +247,15 @@ select option{background:var(--surf2);}
         <div id="sheet-status" style="font-size:11px;margin-top:6px;"></div>
       </div>
 
-      <div class="row2" style="margin-bottom:12px;">
-        <div class="fg" style="margin:0;">
-          <label>Tipo de pedido</label>
-          <div class="toggle-row">
-            <button class="tgl on" id="t-del" onclick="setTipo('delivery')"><i class="ti ti-motorcycle" aria-hidden="true"></i> Delivery</button>
-            <button class="tgl" id="t-pic" onclick="setTipo('pickup')"><i class="ti ti-walk" aria-hidden="true"></i> Pickup</button>
-          </div>
-        </div>
-        <div class="fg" style="margin:0;display:none;">
-          <label>Teléfono del cliente</label>
-          <input type="tel" id="inp-tel" placeholder="999 000 000"/>
-        </div>
-      </div>
-
-      <div class="row2">
-        <div class="fg" style="margin:0;">
-          <label>Método de pago</label>
-          <div class="toggle-row">
-            <button class="tgl tgl-pago on" id="p-ef" onclick="setPago('Efectivo')"><i class="ti ti-cash" aria-hidden="true"></i> Efectivo</button>
-            <button class="tgl tgl-pago" id="p-yp" onclick="setPago('Yape/Plin')"><i class="ti ti-device-mobile" aria-hidden="true"></i> Yape/Plin</button>
-          </div>
-        </div>
-        <div class="fg" style="margin:0;">
-          <label>Estado del pago</label>
-          <div class="pago-toggle-row">
-            <button class="pago-tgl on-pend" id="ep-pend" onclick="setEstadoPago('Pendiente')"><i class="ti ti-clock" aria-hidden="true"></i> Pendiente</button>
-            <button class="pago-tgl" id="ep-pag" onclick="setEstadoPago('Pagado')"><i class="ti ti-check" aria-hidden="true"></i> Pagado</button>
-          </div>
-        </div>
+      <!-- Tipo/Pago/EstadoPago ocultos en registro rapido — se completan despues en la card -->
+      <div style="display:none;">
+        <button class="tgl on" id="t-del" onclick="setTipo('delivery')"></button>
+        <button class="tgl" id="t-pic" onclick="setTipo('pickup')"></button>
+        <input type="tel" id="inp-tel"/>
+        <button class="tgl tgl-pago on" id="p-ef" onclick="setPago('Efectivo')"></button>
+        <button class="tgl tgl-pago" id="p-yp" onclick="setPago('Yape/Plin')"></button>
+        <button class="pago-tgl on-pend" id="ep-pend" onclick="setEstadoPago('Pendiente')"></button>
+        <button class="pago-tgl" id="ep-pag" onclick="setEstadoPago('Pagado')"></button>
       </div>
 
       <div class="hr"></div>
