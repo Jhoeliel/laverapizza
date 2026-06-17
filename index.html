@@ -791,13 +791,48 @@ function acBlurCombo(inp) {
   }, 150);
 }
 
+var TAMANOS_PIZZA = ['Personal', 'Pequeña', 'Mediana', 'Familiar', 'Grande'];
+
+function getTamano(nombre) {
+  for (var i = 0; i < TAMANOS_PIZZA.length; i++) {
+    if (nombre.indexOf(TAMANOS_PIZZA[i]) !== -1) return TAMANOS_PIZZA[i];
+  }
+  return null;
+}
+
 function acFilter(inp) {
   var val = inp.value.toLowerCase().trim();
   var drop = document.getElementById('drop-' + inp.id);
+  var pool = catalog;
+
+  // Si es el input del 2do sabor, restringir al mismo tamaño del 1er sabor
+  var isSecond = inp.classList.contains('ac-input2');
+  if (isSecond) {
+    var wrap = inp.closest('.combo-wrap') || inp.closest('.prod-row');
+    var inp1 = wrap ? wrap.querySelector('.ac-input:not(.ac-input2)') : null;
+    var tam1 = inp1 ? getTamano(inp1.value) : null;
+    if (tam1) {
+      // Solo pizzas del mismo tamaño (excluye productos no-pizza como gaseosas, combos, etc.)
+      pool = catalog.filter(function(c) {
+        return c.name.toLowerCase().indexOf('pizza') !== -1 && getTamano(c.name) === tam1;
+      });
+    } else {
+      // Si el primer sabor no es una pizza con tamaño reconocido, no permitir 2do sabor
+      pool = [];
+    }
+  }
+
   var matches = val === ''
-    ? catalog
-    : catalog.filter(function(c) { return c.name.toLowerCase().indexOf(val) !== -1; });
-  if (!matches.length) { drop.style.display = 'none'; return; }
+    ? pool
+    : pool.filter(function(c) { return c.name.toLowerCase().indexOf(val) !== -1; });
+
+  if (!matches.length) {
+    drop.innerHTML = isSecond
+      ? '<div class="ac-item" style="color:var(--muted);cursor:default;" onmousedown="event.preventDefault()">Selecciona primero una pizza con tamaño</div>'
+      : '';
+    drop.style.display = matches.length || isSecond ? 'block' : 'none';
+    return;
+  }
   drop.innerHTML = matches.map(function(c, i) {
     var hl = c.name.replace(new RegExp('(' + val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi'), '<strong>$1</strong>');
     return '<div class="ac-item" data-name="' + c.name + '" data-price="' + c.price + '" ' +
@@ -820,13 +855,24 @@ function acSelect(item) {
   if (inp.classList.contains('ac-input2')) {
     calcComboPrice(inp);
   } else {
-    // Solo actualizar precio si no hay segundo sabor activo
+    // Si cambia el primer sabor, verificar que el segundo siga siendo compatible (mismo tamaño)
     var second = row.querySelector('.combo-second');
-    var inp2val = second && second.classList.contains('show') ? row.querySelector('.ac-input2').value : '';
-    if (!inp2val) {
-      row.querySelectorAll('input[type=number]')[1].value = price.toFixed(2);
+    var inp2 = row.querySelector('.ac-input2');
+    var inp2val = second && second.classList.contains('show') ? inp2.value : '';
+    if (inp2val) {
+      var tam1 = getTamano(name);
+      var tam2 = getTamano(inp2val);
+      if (tam1 !== tam2) {
+        // Ya no coinciden los tamaños — limpiar segundo sabor
+        inp2.value = '';
+        var note = row.querySelector('.combo-price-note');
+        if (note) note.textContent = '';
+        row.querySelectorAll('input[type=number]')[1].value = price.toFixed(2);
+      } else {
+        calcComboPrice(inp2);
+      }
     } else {
-      calcComboPrice(row.querySelector('.ac-input2'));
+      row.querySelectorAll('input[type=number]')[1].value = price.toFixed(2);
     }
   }
   calcTots();
